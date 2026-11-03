@@ -27,3 +27,9 @@ rustc-ice-*.txt
 # Added by cargo
 
 /target
+
+# macOS shit
+
+.DS_Store
+**/.DS_Store
+
