@@ -69,12 +69,20 @@ fn sync_ui(ui: &AppWindow, state: &AppState) {
 
     // 1. Vault Header Info
     if let Some(ref path) = state.vault_path {
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("Vault");
-        ui.set_vault_name(name.into());
-        ui.set_vault_path(path.display().to_string().into());
+        let path_str = path.display().to_string();
+        let display_name = state
+            .registered_vaults
+            .iter()
+            .find(|v| v.path == path_str)
+            .map(|v| v.name.clone())
+            .unwrap_or_else(|| {
+                path.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("Vault")
+                    .to_string()
+            });
+        ui.set_vault_name(display_name.into());
+        ui.set_vault_path(path_str.into());
     } else {
         let placeholder = if state.language == "zh" {
             "点击打开文献库..."
@@ -569,6 +577,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     {
         let ui_handle = ui.as_weak();
         let state_rc = state.clone();
+        ui.on_save_rename_vault(move |path, new_name| {
+            let mut state = state_rc.lock().unwrap();
+            state.rename_vault(&path, &new_name);
+            if let Some(ui) = ui_handle.upgrade() {
+                sync_ui(&ui, &state);
+            }
+        });
+    }
+    {
+        let ui_handle = ui.as_weak();
+        let state_rc = state.clone();
         let watcher_clone = watcher.clone();
         ui.on_switch_vault(move |path| {
             let mut state = state_rc.lock().unwrap();
@@ -777,7 +796,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     ui.show()?;
 
     // Setup native macOS seamless titlebar integration & window sizing bounds
-    setup_macos_vibrancy();
+    #[cfg(target_os = "macos")]
+    let _timer = {
+        let timer = slint::Timer::default();
+        timer.start(
+            slint::TimerMode::SingleShot,
+            std::time::Duration::from_millis(60),
+            move || {
+                let _ = setup_macos_vibrancy();
+            },
+        );
+        timer
+    };
 
     slint::run_event_loop()?;
     Ok(())

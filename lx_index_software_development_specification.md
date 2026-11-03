@@ -255,32 +255,186 @@ pub fn copy_bibtex_to_clipboard(note_path: &std::path::Path) -> Result<(), Box<d
 
 ### Phase 1: macOS First-Pass Scaffolding (macOS 15.8)
 
-- [ ] Initialize Cargo project with Slint dependencies (`slint = "1.8"`).
-- [ ] Implement `src/scanner.rs`: Read directory trees, pair PDFs with notes.
-- [ ] Implement `src/frontmatter.rs`: Lossless extraction and updating of YAML headers.
-- [ ] Implement `src/ops.rs`: Finder reveal commands (`open -R`), system clipboard actions, and safe file deletion (`trash`).
+- [x] Initialize Cargo project with Slint dependencies (`slint = "1.8"`).
+- [x] Implement `src/scanner.rs`: Read directory trees, pair PDFs with notes.
+- [x] Implement `src/frontmatter.rs`: Lossless extraction and updating of YAML headers.
+- [x] Implement `src/ops.rs`: Finder reveal commands (`open -R`), system clipboard actions, and safe file deletion (`trash`).
 
 ### Phase 2: Slint UI Layout & Reactive Binding
 
-- [ ] Design `ui/appwindow.slint`: 3-pane responsive desktop shell.
-- [ ] Create `SlintPaperItem` struct and bind `slint::VecModel` to the center list view.
-- [ ] Implement reactive search filtering (matching query against title, authors, tags, and citekey).
-- [ ] Implement right-hand Inspector pane: Two-way binding for `status`, `importance` stars, and projects list.
+- [x] Design `ui/appwindow.slint`: 3-pane responsive desktop shell.
+- [x] Create `SlintPaperItem` struct and bind `slint::VecModel` to the center list view.
+- [x] Implement reactive search filtering (matching query against title, authors, tags, and citekey).
+- [x] Implement right-hand Inspector pane: Two-way binding for `status`, `importance` stars, and projects list.
 
 ### Phase 3: Ingestion & Stub Creation Flow
 
-- [ ] Detect new PDFs that lack companion notes.
-- [ ] Implement "Import All / Import Selected" button:
+- [x] Detect new PDFs that lack companion notes.
+- [x] Implement "Import All / Import Selected" button:
   * Generates `notes/<basename>.md` with initial YAML frontmatter (`status: unread`).
   * Emits refresh event to reload the list view instantly.
 
-### Phase 4: Windows 10 Metro Adaptation
+### Phase 4: Windows 10/11 Fluent & Metro Adaptation
 
-- [ ] Verify clean compilation on Windows 10 (`cargo build --target x86_64-pc-windows-msvc`).
-- [ ] Adapt UI styling parameters for Windows: Apply `Segoe UI`, crisp rectangular corners, and Metro tile cards.
+- [ ] Verify clean compilation on Windows (`cargo build --target x86_64-pc-windows-msvc`).
+- [ ] Adapt UI styling parameters for Windows: Apply `Segoe UI Variable`, crisp micro-rounded corners (4px), and Metro / Fluent cards.
 - [ ] Test Explorer reveal command (`explorer /select,`) and normalize path separators (`\` vs `/`).
+- [ ] Embed `assets/app_icon.ico` into `lx-index.exe` via `winres` in `build.rs`.
 
 ### Phase 5: Production Packaging
 
-- [ ] Package macOS universal binary and bundle into `.app` / `.dmg`.
-- [ ] Package Windows standalone portable executable (`lx-index.exe`).
+- [x] Package macOS universal binary and bundle into `.app` / `.dmg` (Completed in v0.5.0).
+- [ ] Package Windows standalone portable executable (`lx-index.exe`) and installer/zip.
+
+---
+
+## 8. Windows Implementation Specification & Functional Parity Contract (Phase 4 Agent Guide)
+
+> [!IMPORTANT]
+> **For the Windows Development Agent**:
+> The macOS primary implementation has reached milestone **v0.5.0 (Beta)**. The entire Rust backend (`src/scanner.rs`, `src/frontmatter.rs`, `src/state.rs`, `src/watcher.rs`, `src/ops.rs`, `src/i18n.rs`) is production-tested, fully unit-tested, and platform-agnostic.
+> When developing the Windows version, **you must maintain 100% data and functional parity** with the backend contract outlined below. While the UI should adopt native Windows Fluent/Metro aesthetics, the underlying library structures, YAML frontmatter schemas, and business workflows must remain identical so that researchers synchronizing vaults via OneDrive between macOS and Windows experience zero friction.
+
+### 8.1 Core Functional Contracts (Strict Parity Required)
+
+#### 1. Vault Management & Multi-Vault Registry
+* **Configuration Path**: Persisted via `dirs::config_dir()`.
+  - On Windows, automatically resolves to: `%APPDATA%\lx-index\config.yaml` (e.g. `C:\Users\<User>\AppData\Roaming\lx-index\config.yaml`).
+  - Serialized via `serde_yaml` using the `AppConfig` struct:
+    ```rust
+    pub struct AppConfig {
+        pub last_vault_path: Option<String>,
+        pub vaults: Vec<VaultRecord>,
+        pub theme_id: Option<String>,
+        pub language: Option<String>,
+    }
+    ```
+* **Custom Vault Renaming (Obsidian Pain Point Solution)**:
+  - Each vault record holds `pub name: String` (display alias) and `pub path: String` (physical disk path).
+  - Users can arbitrarily rename the vault display alias in the Vaults Manager modal without renaming or moving the folder on disk.
+  - The Windows UI must display `vault.name` (falling back to folder name if unset) in the top header and vaults manager.
+* **Unmanaging vs. Deleting**:
+  - "Unmanage Vault" (`remove_vault`) strictly removes the vault from `registered_vaults` and configuration. It **NEVER** deletes files from the user's hard drive.
+
+#### 2. Lossless YAML Frontmatter Protocol
+* **Frontmatter Schema**:
+  ```yaml
+  ---
+  title: "Coherent Optical Computing"
+  citekey: "Author2026Coherent"
+  doi: "10.1117/12.345678"
+  year: 2026
+  authors:
+    - "Author, A."
+    - "Researcher, B."
+  field: "Optical_Computing"
+  projects:
+    - "SoftMAX"
+  status: unread       # unread | ai-skimmed | deep-read | discarded
+  importance: 4        # 0 to 5
+  tags:
+    - "optics"
+    - "neural-network"
+  summary: "Key insight or personal note takeaway"
+  ---
+  ```
+* **Lossless Roundtrip Guarantee**:
+  - `src/frontmatter.rs` must only replace the string between the opening and closing `---` delimiters.
+  - Human annotations (`## 0. Personal Insights`), AI notes, reading logs, and embedded ````bibtex ... ```` code blocks in the Markdown body must be preserved down to the exact byte.
+
+#### 3. Automatic Discard & Priority State Machine
+* **Auto-Discard Workflow**: When the user sets `status` to `Discarded`, the importance rating is automatically clamped/tagged as **2 Stars (★2 = Discarded)**.
+* **Deletion Workflow (★1)**: When an item is marked **1 Star (★1 = To Delete)**, it represents literature flagged for trash. Triggering deletion calls `safe_delete_paper()`, which sends both the `.pdf` and companion `notes/<basename>.md` to the Windows Recycle Bin via the `trash` crate.
+* **High Priority Filter (★4+)**: Items with importance `>= 4` (★4 Important, ★5 High Priority) automatically qualify for the `High Priority` perspective in the sidebar.
+* **Summary / Appendix Field**: The `summary` YAML field represents personal takeaways and quick reference notes. It is displayed as an italicized block in the middle column list and is directly editable in the Inspector pane with instant lossless persistence.
+
+#### 4. Realtime Filesystem Watching
+* `notify::RecommendedWatcher` monitors the active vault root recursively.
+* Emits debounced reload events (500ms debounce) when files are created, updated, or removed externally (e.g. by Obsidian, Zotero, or OneDrive sync).
+* On Windows, handle `ReadDirectoryChangesW` buffer overflow gracefully by triggering a full rescan when a watcher error occurs.
+
+#### 5. Ingestion & Stub Creation Flow
+* When new `.pdf` files are deposited in any `<Field>/` directory without companion notes:
+  - System discovers them with `has_pdf: true, has_note: false`.
+  - Displayed in the `Pending Ingestion` perspective and top banner (`uncatalogued PDF(s) detected`).
+  - "Import Note" / "Import All" generates `notes/<basename>.md` containing:
+    ```markdown
+    ---
+    title: "<Parsed Title>"
+    citekey: "<AuthorYearKeyword>"
+    year: <Year>
+    authors:
+      - "<Author>"
+    field: "<Field>"
+    projects: []
+    status: unread
+    importance: 0
+    tags: []
+    ---
+
+    # <Title>
+
+    ## 0. Personal Insights
+    ```
+
+#### 6. Multi-Select Star Rating Filter
+* The center list view supports multi-select star filtering (TreeSelect style), enabling simultaneous selection of arbitrary star combinations (e.g. `[5, 4]` for high priority or `[1]` for cleanup).
+
+#### 7. System Operations & Clipboard
+* **Explorer Reveal**:
+  ```rust
+  #[cfg(target_os = "windows")]
+  std::process::Command::new("explorer")
+      .arg(format!("/select,\"{}\"", path.display()))
+      .spawn()?;
+  ```
+* **BibTeX Copying**: Extracts embedded ````bibtex ... ```` block from note or generates fallback `@article{...}` based on YAML frontmatter.
+* **Citekey Copying**: Copies `@<citekey>` string directly to the Windows clipboard via `arboard`.
+* **Recycle Bin**: Uses `trash::delete()` which invokes the native Windows COM `IFileOperation` interface, ensuring items appear in the Windows desktop Recycle Bin.
+
+---
+
+### 8.2 Windows-Specific Technical Requirements
+
+1. **Path Normalization & Drive Letters**:
+   - Always handle Windows backslashes (`\`) vs UNIX slashes (`/`).
+   - Store canonical paths or handle drive letter case normalization (`C:\` vs `c:\`).
+   - Support long paths (`\\?\` UNC prefix) for nested literature hierarchies in OneDrive PhD repositories.
+2. **Windows Application Icon Embedding**:
+   - The Windows icon has already been created and verified at [`assets/app_icon.ico`](file:///Users/dai/Documents/VibeCoding/lx-Index/assets/app_icon.ico) (containing 256×256, 128×128, 64×64, 48×48, 32×32, 24×24, 16×16 with full 32-bit alpha transparency).
+   - In `build.rs` on Windows, use the `winres` crate to compile `assets/app_icon.ico` directly into the `.exe` binary resource table:
+     ```rust
+     #[cfg(target_os = "windows")]
+     {
+         let mut res = winres::WindowsResource::new();
+         res.set_icon("assets/app_icon.ico");
+         res.set("ProductName", "lx Index");
+         res.set("FileDescription", "Literature Management HUD");
+         res.set("LegalCopyright", "© 2026 Lucentia");
+         res.compile().unwrap();
+     }
+     ```
+3. **Slint Windows GPU Acceleration**:
+   - Features in `Cargo.toml`: `slint = { version = "1.8", features = ["renderer-skia"] }`.
+   - On Windows, Skia automatically selects Direct3D 12/Direct3D 11 or Vulkan hardware acceleration with software fallback.
+4. **Windows Native Fluent / Metro UI Design Recommendations**:
+   - **Corners**: Micro-rounded corners (`border-radius: 4px`) conforming to Windows 11 Fluent Design or sharp rectangular tiles (`border-radius: 0px` to `2px`) for Windows 10 Metro.
+   - **Typography**:
+     - UI Font: `Segoe UI Variable Text`, `Segoe UI`, `Microsoft YaHei` (微软雅黑).
+     - Brand Logo Serif: `Georgia`, `Cambria`, or bundled Baskerville.
+   - **Window Framing & DWM**:
+     - Maintain compatibility with Windows 11 Snap Layouts (hovering over maximize button).
+     - Top titlebar integration can utilize custom DWM styling or Windows native caption controls.
+5. **Localization & Color Themes**:
+   - Maintain full dual-language support (`zh` / `en`) via `src/i18n.rs`.
+   - Support the 5 scholarly literary themes:
+     1. `羊皮古雅 · Parchment Warm (Default)`
+     2. `暮光晨曦 · Rosé Pine Dawn`
+     3. `经典学术 · Solarized Light`
+     4. `象牙古籍 · Antique Ivory`
+     5. `清雅现代 · Catppuccin Latte`
+6. **About Modal & Brand Information**:
+   - Version: `0.5.0`
+   - Brand & Studio: `Designed & Developed by Lucentia`
+   - Tagline: `Literature HUD & Companion Workspace` (文献管理 HUD 与伴生工作空间)
+   - Copyright: `© 2026 Lucentia. All rights reserved.`

@@ -10,7 +10,7 @@ RELEASE_BIN="${PROJECT_ROOT}/target/release/lx-index"
 DIST_DIR="${PROJECT_ROOT}/target/release/bundle/osx"
 APP_NAME="lx Index.app"
 APP_DIR="${DIST_DIR}/${APP_NAME}"
-DMG_PATH="${PROJECT_ROOT}/target/release/lx-index-0.1.0-macOS.dmg"
+DMG_PATH="${PROJECT_ROOT}/target/release/lx-index-0.5.0-macOS.dmg"
 
 # 1. Ensure binary exists
 if [[ ! -f "${RELEASE_BIN}" ]]; then
@@ -51,7 +51,7 @@ cat > "${APP_DIR}/Contents/Info.plist" << 'EOF'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>0.5.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
@@ -64,35 +64,10 @@ cat > "${APP_DIR}/Contents/Info.plist" << 'EOF'
 </plist>
 EOF
 
-# 5. Create a clean AppIcon if possible, or iconset
-# Create an empty .icns or minimal icon
-ICONSET_DIR="/tmp/lx_index_icon.iconset"
-rm -rf "${ICONSET_DIR}"
-mkdir -p "${ICONSET_DIR}"
-
-# Create a gold Lucentia 1024x1024 base PNG using sips or python
-python3 -c '
-from PIL import Image, ImageDraw
-img = Image.new("RGBA", (1024, 1024), (24, 25, 28, 255))
-draw = ImageDraw.Draw(img)
-# Draw Lucentia Gold Accent border
-draw.rounded_rectangle([32, 32, 992, 992], radius=220, fill=(28, 30, 36, 255), outline=(197, 160, 89, 255), width=28)
-# Save base
-img.save("/tmp/lx_index_icon.iconset/icon_512x512@2x.png")
-' 2>/dev/null || true
-
-if [[ -f "/tmp/lx_index_icon.iconset/icon_512x512@2x.png" ]]; then
-    sips -z 16 16     /tmp/lx_index_icon.iconset/icon_512x512@2x.png --out "${ICONSET_DIR}/icon_16x16.png" > /dev/null 2>&1 || true
-    sips -z 32 32     /tmp/lx_index_icon.iconset/icon_512x512@2x.png --out "${ICONSET_DIR}/icon_16x16@2x.png" > /dev/null 2>&1 || true
-    sips -z 32 32     /tmp/lx_index_icon.iconset/icon_512x512@2x.png --out "${ICONSET_DIR}/icon_32x32.png" > /dev/null 2>&1 || true
-    sips -z 64 64     /tmp/lx_index_icon.iconset/icon_512x512@2x.png --out "${ICONSET_DIR}/icon_32x32@2x.png" > /dev/null 2>&1 || true
-    sips -z 128 128   /tmp/lx_index_icon.iconset/icon_512x512@2x.png --out "${ICONSET_DIR}/icon_128x128.png" > /dev/null 2>&1 || true
-    sips -z 256 256   /tmp/lx_index_icon.iconset/icon_512x512@2x.png --out "${ICONSET_DIR}/icon_128x128@2x.png" > /dev/null 2>&1 || true
-    sips -z 256 256   /tmp/lx_index_icon.iconset/icon_512x512@2x.png --out "${ICONSET_DIR}/icon_256x256.png" > /dev/null 2>&1 || true
-    sips -z 512 512   /tmp/lx_index_icon.iconset/icon_512x512@2x.png --out "${ICONSET_DIR}/icon_256x256@2x.png" > /dev/null 2>&1 || true
-    sips -z 512 512   /tmp/lx_index_icon.iconset/icon_512x512@2x.png --out "${ICONSET_DIR}/icon_512x512.png" > /dev/null 2>&1 || true
-    iconutil -c icns "${ICONSET_DIR}" -o "${APP_DIR}/Contents/Resources/AppIcon.icns" 2>/dev/null || true
-    rm -rf "${ICONSET_DIR}"
+# 5. Install official AppIcon.icns
+if [[ -f "${PROJECT_ROOT}/assets/AppIcon.icns" ]]; then
+    echo "Installing AppIcon.icns to ${APP_DIR}/Contents/Resources/AppIcon.icns"
+    cp "${PROJECT_ROOT}/assets/AppIcon.icns" "${APP_DIR}/Contents/Resources/AppIcon.icns"
 fi
 
 # 6. Verify Bundle validity with plutil

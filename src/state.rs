@@ -126,6 +126,21 @@ impl AppState {
         removed
     }
 
+    /// Renames a registered vault's display name.
+    pub fn rename_vault(&mut self, path: &str, new_name: &str) -> bool {
+        let trimmed = new_name.trim();
+        if trimmed.is_empty() {
+            return false;
+        }
+        if let Some(vault) = self.registered_vaults.iter_mut().find(|v| v.path == path) {
+            vault.name = trimmed.to_string();
+            self.save_current_config();
+            true
+        } else {
+            false
+        }
+    }
+
     /// Switches the active vault to one of the registered vaults.
     pub fn switch_vault(&mut self, path: &str) -> std::io::Result<()> {
         let p = PathBuf::from(path);
@@ -775,6 +790,12 @@ tags:
 
         let note2_path = field1_notes.join("2025_Bandyopadhyay_Hardware.md");
         assert!(note2_path.exists());
+
+        // Test Vault renaming
+        let vault_path_str = temp_dir.display().to_string();
+        assert!(state.rename_vault(&vault_path_str, "My Custom Photonics Vault"));
+        let updated_record = state.registered_vaults.iter().find(|v| v.path == vault_path_str).unwrap();
+        assert_eq!(updated_record.name, "My Custom Photonics Vault");
 
         let _ = fs::remove_dir_all(&temp_dir);
     }

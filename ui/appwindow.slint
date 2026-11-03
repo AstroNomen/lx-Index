@@ -218,6 +218,7 @@ component TreeSelectOption inherits Rectangle {
 
 export component AppWindow inherits Window {
     title: root.strings.app_title;
+    icon: @image-url("../assets/icon_256.png");
     min-width: 960px;
     min-height: 600px;
     preferred-width: 1280px;
@@ -311,10 +312,28 @@ export component AppWindow inherits Window {
         language_tab: "界面语言",
         add_vault: "+ 添加本地文件夹为文献库",
         unmanage_vault: "移除管理",
+        rename_vault: "重命名",
+        save_rename: "保存",
+        cancel: "取消",
         active_vault: "当前使用中",
         switch_vault: "切换到此库",
         unmanage_hint: "注：移除仅从 lx Index 取消管理，绝不会删除本地磁盘上的任何文献文件。",
-        close: "完成"
+        close: "完成",
+        theme_parchment_title: "羊皮古雅 · Parchment Warm (默认推荐)",
+        theme_parchment_desc: "温润微黄羊皮纸底色，深邃典雅古墨字体，尽显藏书楼古籍书香。",
+        theme_rose_pine_title: "暮光晨曦 · Rosé Pine Dawn",
+        theme_rose_pine_desc: "经典暮光柔和色系，优雅微醺紫调与暖白纸底，静谧舒适。",
+        theme_solarized_title: "经典学术 · Solarized Light",
+        theme_solarized_desc: "经典学术米黄基调，精准对比度与护眼色彩配方，专注文献研读。",
+        theme_ivory_title: "象牙古籍 · Antique Ivory",
+        theme_ivory_desc: "细腻温和象牙质感，深棕胡桃木字体，还原传统图书馆阅览体验。",
+        theme_latte_title: "清雅现代 · Catppuccin Latte",
+        theme_latte_desc: "清新明朗的现代浅色调，温和柔美的低饱和色彩，清爽利落。",
+        about_tab: "关于软件",
+        about_tagline: "文献管理 HUD 与伴生工作空间",
+        about_desc: "基于 Rust 与 Slint 原生构建的高性能文献 HUD。零 Web 运行时、零私有数据库锁定，以无损本地 Markdown 与古雅排版，让每一次学术阅读回归专注与宁静。",
+        about_tech_stack: "架构设计：Lucentia · 渲染引擎：Skia / Metal · 数据协议：Lossless YAML Frontmatter",
+        about_copyright: "© 2026 Lucentia. All rights reserved."
     };
 
     in-out property <string> current-theme-id: "parchment";
@@ -326,6 +345,8 @@ export component AppWindow inherits Window {
     in-out property <bool> show-settings: false;
     in-out property <int> settings-tab: 0; // 0: Vaults, 1: Theme, 2: Language
     in-out property <[SlintVaultItem]> registered-vaults: [];
+    in-out property <string> editing-vault-path: "";
+    in-out property <string> editing-vault-name: "";
 
     // Current Vault properties
     in-out property <string> vault-name: "No Vault Loaded";
@@ -426,6 +447,7 @@ export component AppWindow inherits Window {
     callback add-vault-dialog();
     callback remove-vault(string);
     callback switch-vault(string);
+    callback save-rename-vault(string, string);
 
     // Main App Container (Takes 100% width and height with zero sizing caps)
     VerticalLayout {
@@ -437,145 +459,184 @@ export component AppWindow inherits Window {
         // TOP HUD & NAVIGATION BAR
         // ==========================================
         Rectangle {
-            height: 52px;
-            background: root.theme.crust.transparentize(12%);
+            height: 40px;
+            background: root.theme.crust;
 
             HorizontalLayout {
-                // padding-left: 78px accommodates macOS traffic lights when titlebarAppearsTransparent = true
-                padding-left: 78px;
-                padding-right: 20px;
-                spacing: 16px;
-                alignment: space-between;
+                padding: 0px;
+                spacing: 0px;
 
-                // Left: Brand & Vault Actions
-                HorizontalLayout {
-                    spacing: 16px;
-                    alignment: start;
+                // Left Zone: Sits directly above Pane 1 (Sidebar, width: 240px)
+                Rectangle {
+                    width: 240px;
+                    height: 40px;
 
-                    // Literary Brand: Option A (Direct font name resolution without CSS comma quotes)
                     HorizontalLayout {
-                        spacing: 6px;
-                        alignment: center;
+                        // padding-left: 88px clears macOS unified traffic lights (centered at x=20, y=20)
+                        padding-left: 88px;
+                        padding-right: 12px;
+                        alignment: start;
 
-                        Text {
-                            text: "lx";
-                            font-family: root.brand-script-font;
-                            font-italic: true;
-                            font-size: 28px;
-                            font-weight: 700;
-                            color: root.theme.mauve;
-                            vertical-alignment: center;
-                        }
-
-                        Text {
-                            text: "Index";
-                            font-family: root.brand-serif-font;
-                            font-size: 21px;
-                            font-weight: 800;
-                            letter-spacing: 1.2px;
-                            color: root.theme.text;
-                            vertical-alignment: center;
-                        }
-                    }
-
-                    // Vault Selector Button (Click opens Vaults Manager)
-                    Rectangle {
-                        height: 30px;
-                        border-radius: 6px;
-                        background: vault-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
-                        border-width: 1px;
-                        border-color: root.theme.surface2;
-                        y: (parent.height - self.height) / 2;
-
-                        vault-btn := TouchArea {
-                            clicked => { root.open-settings-tab(0); }
-                            mouse-cursor: pointer;
-                        }
-
-                        HorizontalLayout {
-                            spacing: 8px;
-                            padding-left: 10px;
-                            padding-right: 10px;
-                            alignment: start;
-
-                            Image {
-                                source: @image-url("icons/folder.svg");
-                                width: 14px;
-                                height: 14px;
-                                colorize: root.theme.mauve;
-                                y: (parent.height - self.height) / 2;
-                            }
-
-                            Text {
-                                text: root.vault-name;
-                                color: root.theme.text;
-                                font-size: 12px;
-                                font-weight: 600;
-                                vertical-alignment: center;
-                            }
-                        }
-                    }
-
-                    // Reload Button
-                    Rectangle {
-                        width: 30px;
-                        height: 30px;
-                        border-radius: 6px;
-                        background: reload-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
-                        border-width: 1px;
-                        border-color: root.theme.surface2;
-                        y: (parent.height - self.height) / 2;
-
-                        reload-btn := TouchArea {
-                            clicked => { root.refresh-vault(); }
-                            mouse-cursor: pointer;
-                        }
-
-                        Image {
-                            source: @image-url("icons/arrow-path.svg");
-                            width: 14px;
-                            height: 14px;
-                            colorize: root.theme.subtext1;
-                            x: (parent.width - self.width) / 2;
+                        // Literary Brand Logo: Optically baseline-locked
+                        Rectangle {
+                            height: 28px;
                             y: (parent.height - self.height) / 2;
+
+                            HorizontalLayout {
+                                spacing: 5px;
+                                alignment: start;
+
+                                Rectangle {
+                                    width: lx-txt.preferred-width;
+                                    height: 28px;
+
+                                    lx-txt := Text {
+                                        text: "lx";
+                                        font-family: root.brand-script-font;
+                                        font-italic: true;
+                                        font-size: 24px;
+                                        font-weight: 700;
+                                        color: root.theme.mauve;
+                                        vertical-alignment: bottom;
+                                        y: -2px; // Optical baseline lock with Baskerville serif feet
+                                    }
+                                }
+
+                                Rectangle {
+                                    width: index-txt.preferred-width;
+                                    height: 28px;
+
+                                    index-txt := Text {
+                                        text: "Index";
+                                        font-family: root.brand-serif-font;
+                                        font-size: 20px;
+                                        font-weight: 800;
+                                        letter-spacing: 0.6px;
+                                        color: root.theme.text;
+                                        vertical-alignment: bottom;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
-                // Right Side: Clean Status info & Settings gear button
-                HorizontalLayout {
-                    spacing: 12px;
-                    alignment: end;
+                // Main Zone: Starts at x = 240px; Vault button's left edge aligns precisely with the Sidebar/Main divider
+                Rectangle {
+                    horizontal-stretch: 1;
+                    height: 40px;
 
-                    Text {
-                        text: root.status-bar-text;
-                        color: root.theme.subtext0;
-                        font-size: 12px;
-                        vertical-alignment: center;
-                    }
+                    HorizontalLayout {
+                        padding-left: 0px;
+                        padding-right: 16px;
+                        spacing: 12px;
+                        alignment: space-between;
 
-                    // Settings Gear Button
-                    Rectangle {
-                        width: 30px;
-                        height: 30px;
-                        border-radius: 6px;
-                        background: settings-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
-                        border-width: 1px;
-                        border-color: root.theme.surface2;
-                        y: (parent.height - self.height) / 2;
+                        // Left: Vault Selector Button & Refresh Button
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: start;
 
-                        settings-btn := TouchArea {
-                            clicked => { root.open-settings(); }
-                            mouse-cursor: pointer;
+                            // Vault Selector Button
+                            Rectangle {
+                                height: 28px;
+                                border-radius: 6px;
+                                background: vault-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
+                                border-width: 1px;
+                                border-color: root.theme.surface2;
+                                y: (parent.height - self.height) / 2;
+
+                                vault-btn := TouchArea {
+                                    clicked => { root.open-settings-tab(0); }
+                                    mouse-cursor: pointer;
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    padding-left: 10px;
+                                    padding-right: 10px;
+                                    alignment: start;
+
+                                    Image {
+                                        source: @image-url("icons/folder.svg");
+                                        width: 14px;
+                                        height: 14px;
+                                        colorize: root.theme.mauve;
+                                        y: (parent.height - self.height) / 2;
+                                    }
+
+                                    Text {
+                                        text: root.vault-name;
+                                        color: root.theme.text;
+                                        font-size: 12px;
+                                        font-weight: 600;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+
+                            // Reload Button
+                            Rectangle {
+                                width: 28px;
+                                height: 28px;
+                                border-radius: 6px;
+                                background: reload-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
+                                border-width: 1px;
+                                border-color: root.theme.surface2;
+                                y: (parent.height - self.height) / 2;
+
+                                reload-btn := TouchArea {
+                                    clicked => { root.refresh-vault(); }
+                                    mouse-cursor: pointer;
+                                }
+
+                                Image {
+                                    source: @image-url("icons/arrow-path.svg");
+                                    width: 13px;
+                                    height: 13px;
+                                    colorize: root.theme.subtext1;
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
                         }
 
-                        Image {
-                            source: @image-url("icons/gear.svg");
-                            width: 14px;
-                            height: 14px;
-                            colorize: root.theme.subtext1;
-                            x: (parent.width - self.width) / 2;
-                            y: (parent.height - self.height) / 2;
+                        // Right Side: Clean Status info & Settings gear button
+                        HorizontalLayout {
+                            spacing: 12px;
+                            alignment: end;
+
+                            Text {
+                                text: root.status-bar-text;
+                                color: root.theme.subtext0;
+                                font-size: 12px;
+                                vertical-alignment: center;
+                            }
+
+                            // Settings Gear Button
+                            Rectangle {
+                                width: 28px;
+                                height: 28px;
+                                border-radius: 6px;
+                                background: settings-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
+                                border-width: 1px;
+                                border-color: root.theme.surface2;
+                                y: (parent.height - self.height) / 2;
+
+                                settings-btn := TouchArea {
+                                    clicked => { root.open-settings(); }
+                                    mouse-cursor: pointer;
+                                }
+
+                                Image {
+                                    source: @image-url("icons/gear.svg");
+                                    width: 14px;
+                                    height: 14px;
+                                    colorize: root.theme.subtext1;
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
                         }
                     }
                 }
@@ -600,10 +661,10 @@ export component AppWindow inherits Window {
             // ------------------------------------------
             Rectangle {
                 width: 240px;
-                background: root.theme.mantle.transparentize(15%);
+                background: root.theme.mantle;
 
                 Flickable {
-                    content-height: sidebar-layout.preferred-height + 24px;
+                    content-height: sidebar-layout.preferred-height;
 
                     sidebar-layout := VerticalLayout {
                         padding: 12px;
@@ -747,7 +808,7 @@ export component AppWindow inherits Window {
                 min-width: 380px;
                 horizontal-stretch: 1;
                 vertical-stretch: 1;
-                background: root.theme.base.transparentize(5%);
+                background: root.theme.base;
 
                 VerticalLayout {
                     padding: 0px;
@@ -810,15 +871,17 @@ export component AppWindow inherits Window {
                     // Search HUD Bar (Left: Search Input, Right: TreeSelect Star Filter + Reset Filters)
                     Rectangle {
                         height: 48px;
-                        background: root.theme.mantle.transparentize(20%);
+                        background: root.theme.mantle;
 
                         HorizontalLayout {
                             padding-left: 16px;
                             padding-right: 16px;
+                            padding-top: 10px;
+                            padding-bottom: 10px;
                             spacing: 12px;
                             alignment: space-between;
 
-                            // Left: Search Input Box (compact width 230px, 28px height, vertically centered)
+                            // Left: Search Input Box (compact width 230px, 28px height, vertically centered by 10px padding)
                             Rectangle {
                                 width: 230px;
                                 height: 28px;
@@ -826,7 +889,6 @@ export component AppWindow inherits Window {
                                 background: root.theme.base;
                                 border-width: 1px;
                                 border-color: search-input.has-focus ? root.theme.mauve : root.theme.surface1;
-                                y: (parent.height - self.height) / 2;
                                 animate border-color { duration: 120ms; }
 
                                 HorizontalLayout {
@@ -885,9 +947,8 @@ export component AppWindow inherits Window {
                             HorizontalLayout {
                                 spacing: 8px;
                                 alignment: end;
-                                y: (parent.height - self.height) / 2;
 
-                                // 1. Star Rating TreeSelect Dropdown Button (Height: 28px, perfectly aligned with search and reset)
+                                // 1. Star Rating TreeSelect Dropdown Button (Height: 28px, perfectly centered)
                                 Rectangle {
                                     height: 28px;
                                     border-radius: 6px;
@@ -936,7 +997,7 @@ export component AppWindow inherits Window {
                                     }
                                 }
 
-                                // 2. Reset Filters Button (Immediately to the right of TreeSelect, Height: 28px)
+                                // 2. Reset Filters Button (Immediately to the right of TreeSelect, Height: 28px, perfectly centered)
                                 if root.active-field != "" || root.active-project != "" || root.search-query != "" || root.active-perspective != "all" || root.filter-stars-count > 0 : Rectangle {
                                     width: 88px;
                                     height: 28px;
@@ -1457,7 +1518,7 @@ export component AppWindow inherits Window {
                 preferred-width: 340px;
                 horizontal-stretch: 0;
                 vertical-stretch: 1;
-                background: root.theme.mantle.transparentize(15%);
+                background: root.theme.mantle;
 
                 if !root.has-selection : VerticalLayout {
                     alignment: center;
@@ -1492,7 +1553,7 @@ export component AppWindow inherits Window {
                 }
 
                 if root.has-selection : Flickable {
-                    content-height: inspector-layout.preferred-height + 32px;
+                    content-height: inspector-layout.preferred-height;
                     content-width: parent.width;
 
                     inspector-layout := VerticalLayout {
@@ -1567,14 +1628,6 @@ export component AppWindow inherits Window {
                             if root.inspector-citekey != "" : HorizontalLayout {
                                 spacing: 8px;
                                 alignment: start;
-
-                                Image {
-                                    source: @image-url("icons/key.svg");
-                                    width: 13px;
-                                    height: 13px;
-                                    colorize: root.theme.mauve;
-                                    y: (parent.height - self.height) / 2;
-                                }
 
                                 Text {
                                     text: "@" + root.inspector-citekey;
@@ -2064,7 +2117,7 @@ export component AppWindow inherits Window {
                     }
                 }
 
-                // Tab Switcher Buttons (Vaults | Themes | Language)
+                // Tab Switcher Buttons (Vaults | Themes | Language | About)
                 HorizontalLayout {
                     spacing: 8px;
 
@@ -2093,6 +2146,15 @@ export component AppWindow inherits Window {
                         text-color: root.settings-tab == 2 ? root.theme.mauve : root.theme.subtext1;
                         font-weight: root.settings-tab == 2 ? 700 : 500;
                         clicked => { root.set-settings-tab(2); }
+                    }
+
+                    HudButton {
+                        text: root.strings.about_tab;
+                        height: 32px;
+                        base-bg: root.settings-tab == 3 ? root.theme.mauve.transparentize(80%) : root.theme.surface0;
+                        text-color: root.settings-tab == 3 ? root.theme.mauve : root.theme.subtext1;
+                        font-weight: root.settings-tab == 3 ? 700 : 500;
+                        clicked => { root.set-settings-tab(3); }
                     }
                 }
 
@@ -2126,7 +2188,7 @@ export component AppWindow inherits Window {
                             spacing: 8px;
 
                             for vault in root.registered-vaults : Rectangle {
-                                height: 54px;
+                                height: root.editing-vault-path == vault.path ? 62px : 54px;
                                 border-radius: 8px;
                                 background: vault.is_active ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
                                 border-width: 1px;
@@ -2138,7 +2200,7 @@ export component AppWindow inherits Window {
                                     spacing: 12px;
                                     alignment: space-between;
 
-                                    VerticalLayout {
+                                    if root.editing-vault-path != vault.path : VerticalLayout {
                                         alignment: center;
                                         spacing: 2px;
 
@@ -2171,54 +2233,148 @@ export component AppWindow inherits Window {
                                         }
                                     }
 
-                                    HorizontalLayout {
-                                        spacing: 8px;
-                                        alignment: end;
+                                    if root.editing-vault-path == vault.path : VerticalLayout {
+                                        alignment: center;
+                                        spacing: 4px;
+                                        horizontal-stretch: 1;
 
-                                        if vault.is_active : Rectangle {
-                                            height: 24px;
-                                            border-radius: 4px;
-                                            background: root.theme.green.transparentize(85%);
+                                        Rectangle {
+                                            height: 28px;
+                                            border-radius: 6px;
+                                            background: root.theme.base;
                                             border-width: 1px;
-                                            border-color: root.theme.green.transparentize(60%);
-                                            y: (parent.height - self.height) / 2;
+                                            border-color: root.theme.mauve;
 
                                             HorizontalLayout {
                                                 padding-left: 8px;
                                                 padding-right: 8px;
-                                                alignment: center;
 
-                                                Text {
-                                                    text: "● " + root.strings.active_vault;
-                                                    color: root.theme.green;
-                                                    font-size: 11px;
-                                                    font-weight: 600;
+                                                rename-in := TextInput {
+                                                    text: root.editing-vault-name;
+                                                    color: root.theme.text;
+                                                    font-size: 12px;
                                                     vertical-alignment: center;
+                                                    edited => { root.editing-vault-name = self.text; }
+                                                    accepted => {
+                                                        if root.editing-vault-name != "" {
+                                                            root.save-rename-vault(vault.path, root.editing-vault-name);
+                                                            root.editing-vault-path = "";
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
 
-                                        if !vault.is_active : HudButton {
-                                            text: root.strings.switch_vault;
-                                            width: 90px;
-                                            height: 26px;
-                                            font-size: 11px;
-                                            base-bg: root.theme.surface0;
-                                            text-color: root.theme.text;
-                                            y: (parent.height - self.height) / 2;
-                                            clicked => { root.switch-vault(vault.path); }
+                                        Text {
+                                            text: vault.path;
+                                            color: root.theme.overlay1;
+                                            font-size: 10px;
+                                            overflow: elide;
+                                        }
+                                    }
+
+                                    HorizontalLayout {
+                                        spacing: 6px;
+                                        alignment: end;
+
+                                        if root.editing-vault-path == vault.path : HorizontalLayout {
+                                            spacing: 6px;
+                                            alignment: end;
+
+                                            HudButton {
+                                                text: root.strings.save_rename;
+                                                width: 60px;
+                                                height: 26px;
+                                                font-size: 11px;
+                                                base-bg: root.theme.mauve;
+                                                text-color: #ffffff;
+                                                font-weight: 600;
+                                                y: (parent.height - self.height) / 2;
+                                                clicked => {
+                                                    if root.editing-vault-name != "" {
+                                                        root.save-rename-vault(vault.path, root.editing-vault-name);
+                                                        root.editing-vault-path = "";
+                                                    }
+                                                }
+                                            }
+
+                                            HudButton {
+                                                text: root.strings.cancel;
+                                                width: 56px;
+                                                height: 26px;
+                                                font-size: 11px;
+                                                base-bg: root.theme.surface0;
+                                                text-color: root.theme.subtext1;
+                                                y: (parent.height - self.height) / 2;
+                                                clicked => {
+                                                    root.editing-vault-path = "";
+                                                }
+                                            }
                                         }
 
-                                        HudButton {
-                                            text: root.strings.unmanage_vault;
-                                            width: 76px;
-                                            height: 26px;
-                                            font-size: 11px;
-                                            base-bg: root.theme.red.transparentize(90%);
-                                            hover-bg: root.theme.red.transparentize(75%);
-                                            text-color: root.theme.red;
-                                            y: (parent.height - self.height) / 2;
-                                            clicked => { root.remove-vault(vault.path); }
+                                        if root.editing-vault-path != vault.path : HorizontalLayout {
+                                            spacing: 6px;
+                                            alignment: end;
+
+                                            if vault.is_active : Rectangle {
+                                                height: 24px;
+                                                border-radius: 4px;
+                                                background: root.theme.green.transparentize(85%);
+                                                border-width: 1px;
+                                                border-color: root.theme.green.transparentize(60%);
+                                                y: (parent.height - self.height) / 2;
+
+                                                HorizontalLayout {
+                                                    padding-left: 8px;
+                                                    padding-right: 8px;
+                                                    alignment: center;
+
+                                                    Text {
+                                                        text: "● " + root.strings.active_vault;
+                                                        color: root.theme.green;
+                                                        font-size: 11px;
+                                                        font-weight: 600;
+                                                        vertical-alignment: center;
+                                                    }
+                                                }
+                                            }
+
+                                            if !vault.is_active : HudButton {
+                                                text: root.strings.switch_vault;
+                                                width: 86px;
+                                                height: 26px;
+                                                font-size: 11px;
+                                                base-bg: root.theme.surface0;
+                                                text-color: root.theme.text;
+                                                y: (parent.height - self.height) / 2;
+                                                clicked => { root.switch-vault(vault.path); }
+                                            }
+
+                                            HudButton {
+                                                text: root.strings.rename_vault;
+                                                width: 64px;
+                                                height: 26px;
+                                                font-size: 11px;
+                                                base-bg: root.theme.surface0;
+                                                text-color: root.theme.subtext1;
+                                                y: (parent.height - self.height) / 2;
+                                                clicked => {
+                                                    root.editing-vault-path = vault.path;
+                                                    root.editing-vault-name = vault.name;
+                                                }
+                                            }
+
+                                            HudButton {
+                                                text: root.strings.unmanage_vault;
+                                                width: 72px;
+                                                height: 26px;
+                                                font-size: 11px;
+                                                base-bg: root.theme.red.transparentize(90%);
+                                                hover-bg: root.theme.red.transparentize(75%);
+                                                text-color: root.theme.red;
+                                                y: (parent.height - self.height) / 2;
+                                                clicked => { root.remove-vault(vault.path); }
+                                            }
                                         }
                                     }
                                 }
@@ -2262,13 +2418,13 @@ export component AppWindow inherits Window {
                                 spacing: 2px;
 
                                 Text {
-                                    text: "米黄古雅 · 羊皮纸 (Parchment Warm - 默认推荐)";
+                                    text: root.strings.theme_parchment_title;
                                     color: root.theme.text;
                                     font-size: 13px;
                                     font-weight: 700;
                                 }
                                 Text {
-                                    text: "温润泛黄羊皮纸底色，深邃典雅古墨色字体，尽显藏书楼古籍书香。";
+                                    text: root.strings.theme_parchment_desc;
                                     color: root.theme.subtext1;
                                     font-size: 11px;
                                 }
@@ -2308,13 +2464,13 @@ export component AppWindow inherits Window {
                                 spacing: 2px;
 
                                 Text {
-                                    text: "典雅暮光 · Rosé Pine Dawn";
+                                    text: root.strings.theme_rose_pine_title;
                                     color: root.theme.text;
                                     font-size: 13px;
                                     font-weight: 700;
                                 }
                                 Text {
-                                    text: "经典晨曦暮光色系，温柔紫调墨色与暖纸白，静谧柔和。";
+                                    text: root.strings.theme_rose_pine_desc;
                                     color: root.theme.subtext1;
                                     font-size: 11px;
                                 }
@@ -2354,13 +2510,13 @@ export component AppWindow inherits Window {
                                 spacing: 2px;
 
                                 Text {
-                                    text: "经典学术 · Solarized Light";
+                                    text: root.strings.theme_solarized_title;
                                     color: root.theme.text;
                                     font-size: 13px;
                                     font-weight: 700;
                                 }
                                 Text {
-                                    text: "经典学术界米黄色配方，精准的蓝青色彩空间，舒适护眼。";
+                                    text: root.strings.theme_solarized_desc;
                                     color: root.theme.subtext1;
                                     font-size: 11px;
                                 }
@@ -2400,13 +2556,13 @@ export component AppWindow inherits Window {
                                 spacing: 2px;
 
                                 Text {
-                                    text: "线装古籍 · 象牙宣纸 (Antique Ivory)";
+                                    text: root.strings.theme_ivory_title;
                                     color: root.theme.text;
                                     font-size: 13px;
                                     font-weight: 700;
                                 }
                                 Text {
-                                    text: "纯正微暖宣纸底色，徽墨深灰与朱砂赭石点缀，古色古香。";
+                                    text: root.strings.theme_ivory_desc;
                                     color: root.theme.subtext1;
                                     font-size: 11px;
                                 }
@@ -2446,13 +2602,13 @@ export component AppWindow inherits Window {
                                 spacing: 2px;
 
                                 Text {
-                                    text: "现代清爽 · Catppuccin Latte";
+                                    text: root.strings.theme_latte_title;
                                     color: root.theme.text;
                                     font-size: 13px;
                                     font-weight: 700;
                                 }
                                 Text {
-                                    text: "冷调现代浅色粉彩风格，高辨识度与极简清爽。";
+                                    text: root.strings.theme_latte_desc;
                                     color: root.theme.subtext1;
                                     font-size: 11px;
                                 }
@@ -2560,6 +2716,133 @@ export component AppWindow inherits Window {
                                 vertical-alignment: center;
                             }
                         }
+                    }
+                }
+
+                // Tab 3: About & Developer Studio Info
+                if root.settings-tab == 3 : VerticalLayout {
+                    spacing: 16px;
+                    alignment: start;
+                    vertical-stretch: 1;
+
+                    // App Card
+                    Rectangle {
+                        border-radius: 12px;
+                        background: root.theme.mantle;
+                        border-width: 1px;
+                        border-color: root.theme.surface0;
+                        height: 110px;
+
+                        HorizontalLayout {
+                            padding: 16px;
+                            spacing: 18px;
+                            alignment: start;
+
+                            // Icon
+                            Image {
+                                source: @image-url("../assets/icon_128.png");
+                                width: 72px;
+                                height: 72px;
+                                image-fit: contain;
+                                y: (parent.height - self.height) / 2;
+                            }
+
+                            VerticalLayout {
+                                spacing: 4px;
+                                alignment: center;
+
+                                HorizontalLayout {
+                                    spacing: 10px;
+                                    alignment: start;
+
+                                    Text {
+                                        text: "lx Index";
+                                        font-family: root.brand-serif-font;
+                                        font-size: 20px;
+                                        font-weight: 800;
+                                        color: root.theme.text;
+                                    }
+
+                                    Rectangle {
+                                        height: 20px;
+                                        border-radius: 4px;
+                                        background: root.theme.mauve.transparentize(80%);
+                                        border-width: 1px;
+                                        border-color: root.theme.mauve.transparentize(50%);
+                                        y: (parent.height - self.height) / 2;
+
+                                        HorizontalLayout {
+                                            padding-left: 6px;
+                                            padding-right: 6px;
+
+                                            Text {
+                                                text: "v0.5.0 Beta";
+                                                color: root.theme.mauve;
+                                                font-size: 10px;
+                                                font-weight: 700;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: root.strings.about_tagline;
+                                    color: root.theme.mauve;
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                }
+
+                                Text {
+                                    text: "Designed & Developed by Lucentia";
+                                    color: root.theme.subtext0;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                }
+                            }
+                        }
+                    }
+
+                    // Manifesto & Architecture Description Card
+                    Rectangle {
+                        border-radius: 8px;
+                        background: root.theme.mantle;
+                        border-width: 1px;
+                        border-color: root.theme.surface0;
+                        height: 120px;
+
+                        VerticalLayout {
+                            padding: 14px;
+                            spacing: 10px;
+                            alignment: center;
+
+                            Text {
+                                text: root.strings.about_desc;
+                                color: root.theme.subtext1;
+                                font-size: 11px;
+                                wrap: word-wrap;
+                            }
+
+                            Rectangle {
+                                height: 1px;
+                                background: root.theme.surface0;
+                            }
+
+                            Text {
+                                text: root.strings.about_tech_stack;
+                                color: root.theme.overlay1;
+                                font-size: 10px;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+
+                    // Copyright footer
+                    Text {
+                        text: root.strings.about_copyright;
+                        color: root.theme.overlay0;
+                        font-size: 11px;
+                        horizontal-alignment: center;
                     }
                 }
             }
