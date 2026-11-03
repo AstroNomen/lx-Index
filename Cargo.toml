@@ -1,0 +1,25 @@
+[package]
+name = "lx-index"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# GUI Framework
+slint = { version = "1.8", features = ["renderer-skia", "compat-1-2"] }
+
+# Filesystem Crawling & Watching
+walkdir = "2.5"
+notify = "6.1"
+
+# Serialization & Markdown Frontmatter
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+
+# System Integration
+open = "5.3"           # Cross-platform reveal / open
+trash = "5.1"          # Native OS Trash / Recycle Bin
+arboard = "3.4"        # Native system clipboard (BibTeX & Citekey copy)
+dirs = "5.0"           # Standard system directories config
+
+[build-dependencies]
+slint-build = "1.8"

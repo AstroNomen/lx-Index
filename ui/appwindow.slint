@@ -1,0 +1,2568 @@
+import { SlintPaperItem, SlintCategoryItem, SlintVaultItem, ThemeColors, I18nStrings } from "models.slint";
+import { ListView } from "std-widgets.slint";
+
+component HudButton inherits Rectangle {
+    in-out property <string> text: "";
+    in-out property <color> text-color: #2c2523;
+    in-out property <color> base-bg: #e2d5c3;
+    in-out property <color> hover-bg: #d5c6b0;
+    in-out property <color> active-bg: #c3b299;
+    in-out property <length> font-size: 12px;
+    in-out property <int> font-weight: 500;
+    callback clicked();
+
+    background: touch.pressed ? root.active-bg : (touch.has-hover ? root.hover-bg : root.base-bg);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #c3b29944;
+    animate background { duration: 120ms; }
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+        mouse-cursor: pointer;
+    }
+
+    Text {
+        text: root.text;
+        color: root.text-color;
+        font-size: root.font-size;
+        font-weight: root.font-weight;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component TagChip inherits Rectangle {
+    in-out property <string> text: "";
+    in-out property <color> text-color: #2f5d8a;
+    in-out property <color> base-bg: #2f5d8a14;
+    in-out property <color> border-col: #2f5d8a33;
+    in-out property <bool> removable: false;
+    callback remove();
+
+    background: root.base-bg;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: root.border-col;
+    height: 22px;
+
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 6px;
+        alignment: center;
+
+        Text {
+            text: root.text;
+            color: root.text-color;
+            font-size: 11px;
+            font-weight: 500;
+            vertical-alignment: center;
+        }
+
+        if root.removable : Rectangle {
+            width: 12px;
+            height: 12px;
+            border-radius: 6px;
+            background: rem-touch.has-hover ? #a83232 : #8f807833;
+            animate background { duration: 100ms; }
+
+            Text {
+                text: "×";
+                color: #ffffff;
+                font-size: 10px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+
+            rem-touch := TouchArea {
+                clicked => { root.remove(); }
+                mouse-cursor: pointer;
+            }
+        }
+    }
+}
+
+component SidebarItem inherits Rectangle {
+    in-out property <string> title: "";
+    in-out property <image> icon-src;
+    in-out property <int> count: 0;
+    in-out property <bool> is-active: false;
+    in-out property <color> active-col: #7a434d;
+    in-out property <color> text-col: #453c37;
+    callback clicked();
+
+    background: root.is-active ? root.active-col.transparentize(85%) : (s-touch.has-hover ? #0000000a : #00000000);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: root.is-active ? root.active-col.transparentize(65%) : #00000000;
+    height: 32px;
+    animate background { duration: 100ms; }
+
+    s-touch := TouchArea {
+        clicked => { root.clicked(); }
+        mouse-cursor: pointer;
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+        alignment: space-between;
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+
+            Image {
+                source: root.icon-src;
+                width: 14px;
+                height: 14px;
+                image-fit: contain;
+                colorize: root.is-active ? root.active-col : root.text-col;
+                y: (parent.height - self.height) / 2;
+            }
+
+            Text {
+                text: root.title;
+                color: root.is-active ? root.active-col : root.text-col;
+                font-size: 12px;
+                font-weight: root.is-active ? 600 : 400;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+
+        Rectangle {
+            width: count-txt.preferred-width + 12px;
+            height: 18px;
+            border-radius: 9px;
+            background: root.is-active ? root.active-col.transparentize(80%) : #0000000a;
+            y: (parent.height - self.height) / 2;
+
+            count-txt := Text {
+                text: root.count;
+                color: root.is-active ? root.active-col : #8f8078;
+                font-size: 10px;
+                font-weight: 600;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+component TreeSelectOption inherits Rectangle {
+    in-out property <bool> is-selected: false;
+    in-out property <string> star-text: "";
+    in-out property <string> label-text: "";
+    in-out property <color> star-color: #b87b1e;
+    in-out property <ThemeColors> theme;
+    callback clicked();
+
+    height: 26px;
+    border-radius: 4px;
+    background: opt-touch.has-hover ? root.theme.surface0 : #00000000;
+    animate background { duration: 80ms; }
+
+    opt-touch := TouchArea {
+        clicked => { root.clicked(); }
+        mouse-cursor: pointer;
+    }
+
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 8px;
+        alignment: start;
+
+        // Checkbox square
+        Rectangle {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            background: root.is-selected ? root.star-color : #00000000;
+            border-width: 1px;
+            border-color: root.is-selected ? root.star-color : root.theme.surface2;
+            y: (parent.height - self.height) / 2;
+
+            if root.is-selected : Image {
+                source: @image-url("icons/check.svg");
+                width: 10px;
+                height: 10px;
+                colorize: #ffffff;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+
+        // Star badge
+        Text {
+            text: root.star-text;
+            color: root.star-color;
+            font-size: 11px;
+            font-weight: 700;
+            vertical-alignment: center;
+        }
+
+        // Description
+        Text {
+            text: root.label-text;
+            color: root.theme.text;
+            font-size: 11px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: root.strings.app_title;
+    min-width: 960px;
+    min-height: 600px;
+    preferred-width: 1280px;
+    preferred-height: 800px;
+    background: root.theme.base;
+    default-font-family: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Segoe UI', sans-serif";
+
+    // Scholarly Warm Theme Palette (Parchment default)
+    in-out property <ThemeColors> theme: {
+        rosewater: #b8685e,
+        flamingo: #9e4e42,
+        pink: #8f4258,
+        mauve: #7a434d,
+        red: #a83232,
+        maroon: #943838,
+        peach: #b55a30,
+        yellow: #b87b1e,
+        green: #3e6b36,
+        teal: #2d6d66,
+        sky: #387d99,
+        sapphire: #286b7b,
+        blue: #2f5d8a,
+        lavender: #65527a,
+        text: #2c2523,
+        subtext1: #453c37,
+        subtext0: #5a4e47,
+        overlay2: #756760,
+        overlay1: #8f8078,
+        overlay0: #a89a92,
+        surface2: #c3b299,
+        surface1: #d5c6b0,
+        surface0: #e2d5c3,
+        base: #fbf5ea,
+        mantle: #f4ece1,
+        crust: #ebe1d3,
+        discard_bg: #6b585022,
+        discard_fg: #3e2e28,
+        reset_bg: #e2d5c366,
+        reset_hover_bg: #e2d5c3,
+        reset_border: #c3b299,
+        reset_fg: #453c37
+    };
+
+    // UI Localization strings
+    in-out property <I18nStrings> strings: {
+        app_title: "lx Index - 文献管理 HUD",
+        perspectives_header: "文献视角",
+        all_items: "全部文献",
+        unread: "未读",
+        high_priority: "高优先级",
+        discarded: "已废弃",
+        pending_ingestion: "待入库文献",
+        fields_header: "研究领域 (学科)",
+        no_fields: "未检测到学科领域",
+        projects_header: "关联项目",
+        no_projects: "暂无关联项目",
+        tags_header: "标签列表",
+        search_placeholder: "搜索标题、作者、领域、标签...",
+        reset_filters: "重置筛选",
+        ingestion_banner: "篇未入库 PDF 位于文献库中",
+        import_all: "批量入库",
+        import_note: "新建笔记",
+        create_note: "新建伴生笔记",
+        uncatalogued_prompt_title: "未入库 PDF",
+        uncatalogued_prompt_desc: "创建伴生 Markdown 笔记以持久化文献标签与元数据",
+        empty_title: "未检索到匹配文献",
+        empty_desc: "请尝试调整搜索关键词或侧边栏筛选条件",
+        status_unread: "未读",
+        status_skimmed: "AI 速读",
+        status_deep: "精读",
+        status_discarded: "已废弃",
+        reading_status_header: "阅读状态",
+        importance_rating_header: "重要度评级",
+        unrated: "未评级",
+        stars_unit: "星级",
+        field_header: "研究领域 (学科)",
+        summary_header: "文献附录与速览备忘",
+        star_all: "全部星级",
+        star_unrated: "0★ 未评级",
+        system_actions_header: "系统操作",
+        reveal_pdf: "在访达中定位 PDF",
+        no_pdf: "未找到对应 PDF",
+        reveal_note: "在访达中定位笔记",
+        note_stub: "无伴生笔记",
+        copy_bibtex: "复制 BibTeX 引用",
+        copy_citekey: "复制 Citekey",
+        move_to_trash: "移至系统回收站",
+        settings_title: "文献库与系统设置",
+        vaults_tab: "文献库管理",
+        theme_tab: "配色方案",
+        language_tab: "界面语言",
+        add_vault: "+ 添加本地文件夹为文献库",
+        unmanage_vault: "移除管理",
+        active_vault: "当前使用中",
+        switch_vault: "切换到此库",
+        unmanage_hint: "注：移除仅从 lx Index 取消管理，绝不会删除本地磁盘上的任何文献文件。",
+        close: "完成"
+    };
+
+    in-out property <string> current-theme-id: "parchment";
+    in-out property <string> current-language: "zh";
+    in-out property <string> brand-script-font: "Snell Roundhand";
+    in-out property <string> brand-serif-font: "Baskerville";
+
+    // Vaults & Settings Modal State
+    in-out property <bool> show-settings: false;
+    in-out property <int> settings-tab: 0; // 0: Vaults, 1: Theme, 2: Language
+    in-out property <[SlintVaultItem]> registered-vaults: [];
+
+    // Current Vault properties
+    in-out property <string> vault-name: "No Vault Loaded";
+    in-out property <string> vault-path: "";
+    in-out property <int> total-count: 0;
+
+    // Filter properties
+    in-out property <string> active-perspective: "all";
+    in-out property <string> active-field: "";
+    in-out property <string> active-project: "";
+    in-out property <bool> filter-star-5: false;
+    in-out property <bool> filter-star-4: false;
+    in-out property <bool> filter-star-3: false;
+    in-out property <bool> filter-star-2: false;
+    in-out property <bool> filter-star-1: false;
+    in-out property <bool> filter-star-0: false;
+    in-out property <int> filter-stars-count: 0;
+    in-out property <string> filter-stars-summary: "";
+    in-out property <bool> star-filter-open: false;
+
+    in-out property <int> count-all: 0;
+    in-out property <int> count-unread: 0;
+    in-out property <int> count-priority: 0;
+    in-out property <int> count-discarded: 0;
+    in-out property <int> count-uncatalogued: 0;
+
+    in-out property <[SlintCategoryItem]> field-categories: [];
+    in-out property <[SlintCategoryItem]> project-categories: [];
+
+    in-out property <string> search-query: "";
+    in-out property <[SlintPaperItem]> items: [];
+    in-out property <int> selected-index: -1;
+    in-out property <string> status-bar-text: "就绪";
+
+    // Inspector properties
+    in-out property <bool> has-selection: false;
+    in-out property <string> inspector-id: "";
+    in-out property <string> inspector-basename: "";
+    in-out property <string> inspector-title: "";
+    in-out property <string> inspector-summary: "";
+    in-out property <string> inspector-citekey: "";
+    in-out property <string> inspector-authors: "";
+    in-out property <int> inspector-year: 0;
+    in-out property <string> inspector-field: "";
+    in-out property <string> inspector-doi: "";
+    in-out property <int> inspector-status: 0;
+    in-out property <int> inspector-importance: 0;
+    in-out property <[string]> inspector-projects: [];
+    in-out property <[string]> inspector-tags: [];
+    in-out property <bool> inspector-has-pdf: false;
+    in-out property <bool> inspector-has-note: false;
+    in-out property <bool> inspector-missing-pdf: false;
+
+    in-out property <string> new-project-input: "";
+    in-out property <string> new-tag-input: "";
+
+    // Callbacks
+    callback search-query-changed(string);
+    callback select-perspective(string);
+    callback select-field(string);
+    callback select-project(string);
+    callback toggle-filter-star(int);
+    callback clear-filter-stars();
+    callback select-all-filter-stars();
+    callback clear-filters();
+    callback select-item(int);
+    callback choose-vault();
+    callback refresh-vault();
+
+    // Ingestion Callbacks
+    callback import-all-uncatalogued();
+    callback import-selected();
+    callback import-item(int);
+
+    // Inspector Mutation Callbacks
+    callback update-status(int);
+    callback update-importance(int);
+    callback update-summary(string);
+    callback add-project(string);
+    callback remove-project(int);
+    callback add-tag(string);
+    callback remove-tag(int);
+
+    // OS Action Callbacks
+    callback reveal-pdf();
+    callback reveal-note();
+    callback copy-bibtex();
+    callback copy-citekey();
+    callback delete-paper();
+
+    // Settings & Vault Management Callbacks
+    callback open-settings();
+    callback open-settings-tab(int);
+    callback close-settings();
+    callback set-settings-tab(int);
+    callback switch-theme(string);
+    callback switch-language(string);
+    callback add-vault-dialog();
+    callback remove-vault(string);
+    callback switch-vault(string);
+
+    // Main App Container (Takes 100% width and height with zero sizing caps)
+    VerticalLayout {
+        padding: 0px;
+        spacing: 0px;
+        vertical-stretch: 1;
+
+        // ==========================================
+        // TOP HUD & NAVIGATION BAR
+        // ==========================================
+        Rectangle {
+            height: 52px;
+            background: root.theme.crust.transparentize(12%);
+
+            HorizontalLayout {
+                // padding-left: 78px accommodates macOS traffic lights when titlebarAppearsTransparent = true
+                padding-left: 78px;
+                padding-right: 20px;
+                spacing: 16px;
+                alignment: space-between;
+
+                // Left: Brand & Vault Actions
+                HorizontalLayout {
+                    spacing: 16px;
+                    alignment: start;
+
+                    // Literary Brand: Option A (Direct font name resolution without CSS comma quotes)
+                    HorizontalLayout {
+                        spacing: 6px;
+                        alignment: center;
+
+                        Text {
+                            text: "lx";
+                            font-family: root.brand-script-font;
+                            font-italic: true;
+                            font-size: 28px;
+                            font-weight: 700;
+                            color: root.theme.mauve;
+                            vertical-alignment: center;
+                        }
+
+                        Text {
+                            text: "Index";
+                            font-family: root.brand-serif-font;
+                            font-size: 21px;
+                            font-weight: 800;
+                            letter-spacing: 1.2px;
+                            color: root.theme.text;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    // Vault Selector Button (Click opens Vaults Manager)
+                    Rectangle {
+                        height: 30px;
+                        border-radius: 6px;
+                        background: vault-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
+                        border-width: 1px;
+                        border-color: root.theme.surface2;
+                        y: (parent.height - self.height) / 2;
+
+                        vault-btn := TouchArea {
+                            clicked => { root.open-settings-tab(0); }
+                            mouse-cursor: pointer;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            alignment: start;
+
+                            Image {
+                                source: @image-url("icons/folder.svg");
+                                width: 14px;
+                                height: 14px;
+                                colorize: root.theme.mauve;
+                                y: (parent.height - self.height) / 2;
+                            }
+
+                            Text {
+                                text: root.vault-name;
+                                color: root.theme.text;
+                                font-size: 12px;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    // Reload Button
+                    Rectangle {
+                        width: 30px;
+                        height: 30px;
+                        border-radius: 6px;
+                        background: reload-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
+                        border-width: 1px;
+                        border-color: root.theme.surface2;
+                        y: (parent.height - self.height) / 2;
+
+                        reload-btn := TouchArea {
+                            clicked => { root.refresh-vault(); }
+                            mouse-cursor: pointer;
+                        }
+
+                        Image {
+                            source: @image-url("icons/arrow-path.svg");
+                            width: 14px;
+                            height: 14px;
+                            colorize: root.theme.subtext1;
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                        }
+                    }
+                }
+
+                // Right Side: Clean Status info & Settings gear button
+                HorizontalLayout {
+                    spacing: 12px;
+                    alignment: end;
+
+                    Text {
+                        text: root.status-bar-text;
+                        color: root.theme.subtext0;
+                        font-size: 12px;
+                        vertical-alignment: center;
+                    }
+
+                    // Settings Gear Button
+                    Rectangle {
+                        width: 30px;
+                        height: 30px;
+                        border-radius: 6px;
+                        background: settings-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
+                        border-width: 1px;
+                        border-color: root.theme.surface2;
+                        y: (parent.height - self.height) / 2;
+
+                        settings-btn := TouchArea {
+                            clicked => { root.open-settings(); }
+                            mouse-cursor: pointer;
+                        }
+
+                        Image {
+                            source: @image-url("icons/gear.svg");
+                            width: 14px;
+                            height: 14px;
+                            colorize: root.theme.subtext1;
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Top divider
+        Rectangle {
+            height: 1px;
+            background: root.theme.surface0;
+        }
+
+        // ==========================================
+        // MAIN 3-PANE BODY
+        // ==========================================
+        HorizontalLayout {
+            spacing: 0px;
+            vertical-stretch: 1;
+
+            // ------------------------------------------
+            // PANE 1: SIDEBAR
+            // ------------------------------------------
+            Rectangle {
+                width: 240px;
+                background: root.theme.mantle.transparentize(15%);
+
+                Flickable {
+                    content-height: sidebar-layout.preferred-height + 24px;
+
+                    sidebar-layout := VerticalLayout {
+                        padding: 12px;
+                        spacing: 16px;
+                        alignment: start;
+
+                        // Perspectives
+                        VerticalLayout {
+                            spacing: 4px;
+
+                            Text {
+                                text: root.strings.perspectives_header;
+                                color: root.theme.overlay1;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                            }
+
+                            SidebarItem {
+                                title: root.strings.all_items;
+                                icon-src: @image-url("icons/book.svg");
+                                count: root.count-all;
+                                is-active: root.active-perspective == "all" && root.active-field == "" && root.active-project == "";
+                                active-col: root.theme.mauve;
+                                text-col: root.theme.subtext1;
+                                clicked => { root.select-perspective("all"); }
+                            }
+
+                            SidebarItem {
+                                title: root.strings.unread;
+                                icon-src: @image-url("icons/tray.svg");
+                                count: root.count-unread;
+                                is-active: root.active-perspective == "unread";
+                                active-col: root.theme.blue;
+                                text-col: root.theme.subtext1;
+                                clicked => { root.select-perspective("unread"); }
+                            }
+
+                            SidebarItem {
+                                title: root.strings.high_priority;
+                                icon-src: @image-url("icons/star.svg");
+                                count: root.count-priority;
+                                is-active: root.active-perspective == "priority";
+                                active-col: root.theme.yellow;
+                                text-col: root.theme.subtext1;
+                                clicked => { root.select-perspective("priority"); }
+                            }
+
+                            SidebarItem {
+                                title: root.strings.discarded;
+                                icon-src: @image-url("icons/trash.svg");
+                                count: root.count-discarded;
+                                is-active: root.active-perspective == "discarded";
+                                active-col: root.theme.discard_fg;
+                                text-col: root.theme.subtext1;
+                                clicked => { root.select-perspective("discarded"); }
+                            }
+
+                            if root.count-uncatalogued > 0 : SidebarItem {
+                                title: root.strings.pending_ingestion;
+                                icon-src: @image-url("icons/bolt.svg");
+                                count: root.count-uncatalogued;
+                                is-active: root.active-perspective == "uncatalogued";
+                                active-col: root.theme.peach;
+                                text-col: root.theme.peach;
+                                clicked => { root.select-perspective("uncatalogued"); }
+                            }
+                        }
+
+                        // Fields (Domains)
+                        VerticalLayout {
+                            spacing: 4px;
+
+                            Text {
+                                text: root.strings.fields_header;
+                                color: root.theme.overlay1;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                            }
+
+                            for field[f-idx] in root.field-categories : SidebarItem {
+                                title: field.name;
+                                icon-src: @image-url("icons/folder.svg");
+                                count: field.count;
+                                is-active: root.active-field == field.name;
+                                active-col: root.theme.lavender;
+                                text-col: root.theme.subtext1;
+                                clicked => { root.select-field(field.name); }
+                            }
+
+                            if root.field-categories.length == 0 : Text {
+                                text: root.strings.no_fields;
+                                color: root.theme.overlay0;
+                                font-size: 11px;
+                            }
+                        }
+
+                        // Projects
+                        VerticalLayout {
+                            spacing: 4px;
+
+                            Text {
+                                text: root.strings.projects_header;
+                                color: root.theme.overlay1;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                            }
+
+                            for proj[p-idx] in root.project-categories : SidebarItem {
+                                title: proj.name;
+                                icon-src: @image-url("icons/target.svg");
+                                count: proj.count;
+                                is-active: root.active-project == proj.name;
+                                active-col: root.theme.teal;
+                                text-col: root.theme.subtext1;
+                                clicked => { root.select-project(proj.name); }
+                            }
+
+                            if root.project-categories.length == 0 : Text {
+                                text: root.strings.no_projects;
+                                color: root.theme.overlay0;
+                                font-size: 11px;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sidebar divider
+            Rectangle {
+                width: 1px;
+                background: root.theme.surface0;
+            }
+
+            // ------------------------------------------
+            // PANE 2: MAIN LIST VIEW
+            // ------------------------------------------
+            Rectangle {
+                min-width: 380px;
+                horizontal-stretch: 1;
+                vertical-stretch: 1;
+                background: root.theme.base.transparentize(5%);
+
+                VerticalLayout {
+                    padding: 0px;
+                    spacing: 0px;
+                    vertical-stretch: 1;
+
+                    // Ingestion Banner for Uncatalogued PDFs
+                    if root.count-uncatalogued > 0 : Rectangle {
+                        height: 38px;
+                        background: root.theme.peach.transparentize(85%);
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            spacing: 12px;
+                            alignment: space-between;
+
+                            HorizontalLayout {
+                                spacing: 8px;
+                                alignment: start;
+
+                                Image {
+                                    source: @image-url("icons/bolt.svg");
+                                    width: 14px;
+                                    height: 14px;
+                                    colorize: root.theme.peach;
+                                    y: (parent.height - self.height) / 2;
+                                }
+
+                                Text {
+                                    text: root.count-uncatalogued + " " + root.strings.ingestion_banner;
+                                    color: root.theme.peach;
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            HudButton {
+                                text: root.strings.import_all + " (" + root.count-uncatalogued + ")";
+                                width: 116px;
+                                height: 26px;
+                                base-bg: root.theme.peach.transparentize(75%);
+                                hover-bg: root.theme.peach.transparentize(60%);
+                                text-color: root.theme.peach;
+                                font-size: 11px;
+                                font-weight: 600;
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.import-all-uncatalogued(); }
+                            }
+                        }
+
+                        Rectangle {
+                            height: 1px;
+                            background: root.theme.peach.transparentize(70%);
+                            y: 37px;
+                        }
+                    }
+
+                    // Search HUD Bar (Left: Search Input, Right: TreeSelect Star Filter + Reset Filters)
+                    Rectangle {
+                        height: 48px;
+                        background: root.theme.mantle.transparentize(20%);
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            spacing: 12px;
+                            alignment: space-between;
+
+                            // Left: Search Input Box (compact width 230px, 28px height, vertically centered)
+                            Rectangle {
+                                width: 230px;
+                                height: 28px;
+                                border-radius: 6px;
+                                background: root.theme.base;
+                                border-width: 1px;
+                                border-color: search-input.has-focus ? root.theme.mauve : root.theme.surface1;
+                                y: (parent.height - self.height) / 2;
+                                animate border-color { duration: 120ms; }
+
+                                HorizontalLayout {
+                                    padding-left: 8px;
+                                    padding-right: 8px;
+                                    spacing: 6px;
+                                    alignment: start;
+
+                                    Image {
+                                        source: @image-url("icons/search.svg");
+                                        width: 13px;
+                                        height: 13px;
+                                        colorize: root.theme.overlay1;
+                                        y: (parent.height - self.height) / 2;
+                                    }
+
+                                    search-input := TextInput {
+                                        text: root.search-query;
+                                        color: root.theme.text;
+                                        font-size: 12px;
+                                        vertical-alignment: center;
+                                        edited => {
+                                            root.search-query = self.text;
+                                            root.search-query-changed(self.text);
+                                        }
+                                    }
+
+                                    if root.search-query != "" : Rectangle {
+                                        width: 16px;
+                                        height: 16px;
+                                        border-radius: 8px;
+                                        background: root.theme.surface1;
+                                        y: (parent.height - self.height) / 2;
+
+                                        Image {
+                                            source: @image-url("icons/xmark.svg");
+                                            width: 9px;
+                                            height: 9px;
+                                            colorize: root.theme.subtext1;
+                                            x: (parent.width - self.width) / 2;
+                                            y: (parent.height - self.height) / 2;
+                                        }
+
+                                        TouchArea {
+                                            clicked => {
+                                                root.search-query = "";
+                                                root.search-query-changed("");
+                                            }
+                                            mouse-cursor: pointer;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Right: Star Filter TreeSelect Button + Reset Filters Button
+                            HorizontalLayout {
+                                spacing: 8px;
+                                alignment: end;
+                                y: (parent.height - self.height) / 2;
+
+                                // 1. Star Rating TreeSelect Dropdown Button (Height: 28px, perfectly aligned with search and reset)
+                                Rectangle {
+                                    height: 28px;
+                                    border-radius: 6px;
+                                    background: root.filter-stars-count > 0 ? root.theme.yellow.transparentize(82%) : (star-tree-touch.has-hover ? root.theme.surface1 : root.theme.surface0);
+                                    border-width: 1px;
+                                    border-color: root.filter-stars-count > 0 ? root.theme.yellow : root.theme.surface2;
+                                    animate background { duration: 100ms; }
+                                    animate border-color { duration: 100ms; }
+
+                                    star-tree-touch := TouchArea {
+                                        clicked => {
+                                            root.star-filter-open = !root.star-filter-open;
+                                        }
+                                        mouse-cursor: pointer;
+                                    }
+
+                                    HorizontalLayout {
+                                        padding-left: 9px;
+                                        padding-right: 9px;
+                                        spacing: 6px;
+                                        alignment: center;
+
+                                        Image {
+                                            source: root.filter-stars-count > 0 ? @image-url("icons/star-fill.svg") : @image-url("icons/star.svg");
+                                            width: 12px;
+                                            height: 12px;
+                                            colorize: root.filter-stars-count > 0 ? root.theme.yellow : root.theme.subtext1;
+                                            y: (parent.height - self.height) / 2;
+                                        }
+
+                                        Text {
+                                            text: root.filter-stars-count > 0 ? root.filter-stars-summary : root.strings.star_filter_button;
+                                            color: root.filter-stars-count > 0 ? root.theme.yellow : root.theme.text;
+                                            font-size: 11px;
+                                            font-weight: root.filter-stars-count > 0 ? 700 : 500;
+                                            vertical-alignment: center;
+                                        }
+
+                                        Image {
+                                            source: @image-url("icons/chevron-down.svg");
+                                            width: 10px;
+                                            height: 10px;
+                                            colorize: root.filter-stars-count > 0 ? root.theme.yellow : root.theme.overlay1;
+                                            y: (parent.height - self.height) / 2;
+                                        }
+                                    }
+                                }
+
+                                // 2. Reset Filters Button (Immediately to the right of TreeSelect, Height: 28px)
+                                if root.active-field != "" || root.active-project != "" || root.search-query != "" || root.active-perspective != "all" || root.filter-stars-count > 0 : Rectangle {
+                                    width: 88px;
+                                    height: 28px;
+
+                                    HudButton {
+                                        text: root.strings.reset_filters;
+                                        width: 88px;
+                                        height: 28px;
+                                        font-size: 11px;
+                                        base-bg: root.theme.reset_bg;
+                                        hover-bg: root.theme.reset_hover_bg;
+                                        text-color: root.theme.reset_fg;
+                                        font-weight: 600;
+                                        clicked => {
+                                            root.star-filter-open = false;
+                                            root.clear-filters();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Search HUD bottom divider
+                    Rectangle {
+                        height: 1px;
+                        background: root.theme.surface0;
+                    }
+
+                    // Paper Items List View (Empty State or List)
+                    if root.items.length == 0 : Rectangle {
+                        vertical-stretch: 1;
+
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: 8px;
+
+                            HorizontalLayout {
+                                alignment: center;
+                                Image {
+                                    source: @image-url("icons/book.svg");
+                                    width: 36px;
+                                    height: 36px;
+                                    colorize: root.theme.overlay0;
+                                }
+                            }
+
+                            Text {
+                                text: root.strings.empty_title;
+                                color: root.theme.subtext0;
+                                font-size: 15px;
+                                font-weight: 600;
+                                horizontal-alignment: center;
+                            }
+
+                            Text {
+                                text: root.strings.empty_desc;
+                                color: root.theme.overlay1;
+                                font-size: 12px;
+                                horizontal-alignment: center;
+                            }
+                        }
+                    }
+
+                    if root.items.length > 0 : ListView {
+                        vertical-stretch: 1;
+
+                        for item[idx] in root.items : Rectangle {
+                            height: 114px;
+                            background: root.selected-index == idx ? root.theme.surface0 : (card-touch.has-hover ? root.theme.surface0.transparentize(60%) : #00000000);
+                            animate background { duration: 100ms; }
+
+                            // Selection accent bar
+                            if root.selected-index == idx : Rectangle {
+                                width: 3px;
+                                background: root.theme.mauve;
+                                x: 0px;
+                            }
+
+                            card-touch := TouchArea {
+                                clicked => { root.select-item(idx); }
+                                mouse-cursor: pointer;
+                            }
+
+                            VerticalLayout {
+                                padding-left: 18px;
+                                padding-right: 18px;
+                                padding-top: 10px;
+                                padding-bottom: 10px;
+                                spacing: 4px;
+                                alignment: space-between;
+
+                                // Row 1: Stars + Filename + Badges
+                                HorizontalLayout {
+                                    alignment: space-between;
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+                                        alignment: start;
+
+                                        // Stars badge
+                                        Rectangle {
+                                            height: 18px;
+                                            border-radius: 4px;
+                                            background: item.importance > 0 ? root.theme.yellow.transparentize(85%) : root.theme.surface1.transparentize(60%);
+                                            border-width: 1px;
+                                            border-color: item.importance > 0 ? root.theme.yellow.transparentize(50%) : root.theme.surface2;
+                                            y: (parent.height - self.height) / 2;
+
+                                            HorizontalLayout {
+                                                padding-left: 6px;
+                                                padding-right: 6px;
+                                                spacing: 4px;
+                                                alignment: center;
+
+                                                Image {
+                                                    source: item.importance > 0 ? @image-url("icons/star-fill.svg") : @image-url("icons/star.svg");
+                                                    width: 11px;
+                                                    height: 11px;
+                                                    colorize: item.importance > 0 ? root.theme.yellow : root.theme.overlay0;
+                                                    y: (parent.height - self.height) / 2;
+                                                }
+
+                                                Text {
+                                                    text: item.importance > 0 ? item.importance : "0";
+                                                    color: item.importance > 0 ? root.theme.yellow : root.theme.overlay0;
+                                                    font-size: 10px;
+                                                    font-weight: 700;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+                                        }
+
+                                        // Basename / Filename
+                                        Text {
+                                            text: item.filename;
+                                            color: root.selected-index == idx ? root.theme.mauve : root.theme.text;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                            vertical-alignment: center;
+                                            overflow: elide;
+                                        }
+                                    }
+
+                                    // Status & Alert Badges
+                                    HorizontalLayout {
+                                        spacing: 6px;
+                                        alignment: end;
+
+                                        if item.is_missing_pdf : Rectangle {
+                                            height: 18px;
+                                            border-radius: 4px;
+                                            background: root.theme.red.transparentize(85%);
+                                            border-width: 1px;
+                                            border-color: root.theme.red.transparentize(60%);
+                                            y: (parent.height - self.height) / 2;
+
+                                            HorizontalLayout {
+                                                padding-left: 6px;
+                                                padding-right: 6px;
+                                                spacing: 4px;
+                                                alignment: center;
+
+                                                Image {
+                                                    source: @image-url("icons/warning.svg");
+                                                    width: 10px;
+                                                    height: 10px;
+                                                    colorize: root.theme.red;
+                                                    y: (parent.height - self.height) / 2;
+                                                }
+
+                                                Text {
+                                                    text: root.strings.no_pdf;
+                                                    color: root.theme.red;
+                                                    font-size: 10px;
+                                                    font-weight: 600;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+                                        }
+
+                                        if !item.has_note : Rectangle {
+                                            height: 18px;
+                                            border-radius: 4px;
+                                            background: root.theme.peach.transparentize(85%);
+                                            border-width: 1px;
+                                            border-color: root.theme.peach.transparentize(60%);
+                                            y: (parent.height - self.height) / 2;
+
+                                            TouchArea {
+                                                clicked => { root.import-item(idx); }
+                                                mouse-cursor: pointer;
+                                            }
+
+                                            HorizontalLayout {
+                                                padding-left: 6px;
+                                                padding-right: 6px;
+                                                spacing: 4px;
+                                                alignment: center;
+
+                                                Image {
+                                                    source: @image-url("icons/plus.svg");
+                                                    width: 9px;
+                                                    height: 9px;
+                                                    colorize: root.theme.peach;
+                                                    y: (parent.height - self.height) / 2;
+                                                }
+
+                                                Text {
+                                                    text: root.strings.import_note;
+                                                    color: root.theme.peach;
+                                                    font-size: 10px;
+                                                    font-weight: 700;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+                                        }
+
+                                        // Reading status badge (High-contrast Discard styling)
+                                        Rectangle {
+                                            height: 18px;
+                                            border-radius: 4px;
+                                            background: item.status_code == 0 ? root.theme.blue.transparentize(88%) : (item.status_code == 1 ? root.theme.mauve.transparentize(88%) : (item.status_code == 2 ? root.theme.green.transparentize(88%) : root.theme.discard_bg));
+                                            border-width: 1px;
+                                            border-color: item.status_code == 0 ? root.theme.blue.transparentize(60%) : (item.status_code == 1 ? root.theme.mauve.transparentize(60%) : (item.status_code == 2 ? root.theme.green.transparentize(60%) : root.theme.discard_fg.transparentize(60%)));
+                                            y: (parent.height - self.height) / 2;
+
+                                            HorizontalLayout {
+                                                padding-left: 8px;
+                                                padding-right: 8px;
+                                                alignment: center;
+
+                                                Text {
+                                                    text: item.status_code == 0 ? root.strings.status_unread : (item.status_code == 1 ? root.strings.status_skimmed : (item.status_code == 2 ? root.strings.status_deep : root.strings.status_discarded));
+                                                    color: item.status_code == 0 ? root.theme.blue : (item.status_code == 1 ? root.theme.mauve : (item.status_code == 2 ? root.theme.green : root.theme.discard_fg));
+                                                    font-size: 10px;
+                                                    font-weight: 600;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Row 2: Full Title (Clean text, tooltip removed per user request)
+                                Text {
+                                    text: item.title;
+                                    color: root.theme.subtext1;
+                                    font-size: 12px;
+                                    font-weight: 500;
+                                    overflow: elide;
+                                }
+
+                                // Row 2.5: Summary / Takeaway (Appendix Quote Block for personal insights)
+                                if item.summary != "" : Rectangle {
+                                    border-radius: 4px;
+                                    background: root.theme.surface0.transparentize(50%);
+                                    height: 20px;
+
+                                    Rectangle {
+                                        width: 2px;
+                                        background: root.theme.mauve.transparentize(30%);
+                                        x: 0px;
+                                    }
+
+                                    HorizontalLayout {
+                                        padding-left: 8px;
+                                        padding-right: 8px;
+                                        alignment: start;
+
+                                        Text {
+                                            text: item.summary;
+                                            font-italic: true;
+                                            color: root.theme.subtext0;
+                                            font-size: 11px;
+                                            vertical-alignment: center;
+                                            overflow: elide;
+                                        }
+                                    }
+                                }
+
+                                // Row 3: Authors, Year, Field & Tags (SVG icon for projects)
+                                HorizontalLayout {
+                                    alignment: space-between;
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+                                        alignment: start;
+
+                                        Text {
+                                            text: item.authors != "" ? (item.authors + " (" + item.year + ")") : ("Year: " + item.year);
+                                            color: root.theme.overlay1;
+                                            font-size: 11px;
+                                            vertical-alignment: center;
+                                        }
+
+                                        Text {
+                                            text: "• " + item.field;
+                                            color: root.theme.overlay1;
+                                            font-size: 11px;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+                                        alignment: end;
+
+                                        if item.projects_display != "" : HorizontalLayout {
+                                            spacing: 4px;
+                                            alignment: center;
+
+                                            Image {
+                                                source: @image-url("icons/target.svg");
+                                                width: 11px;
+                                                height: 11px;
+                                                colorize: root.theme.teal;
+                                                y: (parent.height - self.height) / 2;
+                                            }
+
+                                            Text {
+                                                text: item.projects_display;
+                                                color: root.theme.teal;
+                                                font-size: 11px;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+
+                                        if item.tags_display != "" : Text {
+                                            text: item.tags_display;
+                                            color: root.theme.sapphire;
+                                            font-size: 11px;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Bottom card separator
+                            Rectangle {
+                                height: 1px;
+                                background: root.theme.surface0.transparentize(50%);
+                                y: 113px;
+                            }
+                        }
+                    }
+                }
+
+                // ==========================================
+                // TREE-SELECT STAR FILTER DROPDOWN POPOVER
+                // ==========================================
+                if root.star-filter-open : Rectangle {
+                    // Transparent backdrop covering Pane 2 to catch clicks outside and dismiss
+                    TouchArea {
+                        clicked => { root.star-filter-open = false; }
+                    }
+
+                    // Floating Card Popover anchored below the TreeSelect button
+                    Rectangle {
+                        x: parent.width - 248px;
+                        y: (root.count-uncatalogued > 0 ? 38px : 0px) + 48px + 2px;
+                        width: 236px;
+                        height: 238px;
+                        border-radius: 8px;
+                        background: root.theme.base;
+                        border-width: 1px;
+                        border-color: root.theme.surface2;
+                        drop-shadow-blur: 18px;
+                        drop-shadow-color: #00000030;
+                        drop-shadow-offset-y: 6px;
+
+                        VerticalLayout {
+                            padding: 8px;
+                            spacing: 3px;
+
+                            // Header
+                            HorizontalLayout {
+                                padding-left: 6px;
+                                padding-right: 6px;
+                                padding-top: 2px;
+                                padding-bottom: 4px;
+                                alignment: space-between;
+
+                                Text {
+                                    text: root.strings.star_filter_button;
+                                    font-size: 11px;
+                                    font-weight: 700;
+                                    color: root.theme.subtext0;
+                                    vertical-alignment: center;
+                                }
+
+                                if root.filter-stars-count > 0 : Text {
+                                    text: root.filter-stars-count + " " + root.strings.stars_unit;
+                                    font-size: 10px;
+                                    font-weight: 600;
+                                    color: root.theme.yellow;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            // Divider
+                            Rectangle { height: 1px; background: root.theme.surface0; }
+
+                            // 5★
+                            TreeSelectOption {
+                                is-selected: root.filter-star-5;
+                                star-text: "5★";
+                                label-text: root.strings.star_5_desc;
+                                star-color: root.theme.yellow;
+                                theme: root.theme;
+                                clicked => { root.toggle-filter-star(5); }
+                            }
+
+                            // 4★
+                            TreeSelectOption {
+                                is-selected: root.filter-star-4;
+                                star-text: "4★";
+                                label-text: root.strings.star_4_desc;
+                                star-color: root.theme.yellow;
+                                theme: root.theme;
+                                clicked => { root.toggle-filter-star(4); }
+                            }
+
+                            // 3★
+                            TreeSelectOption {
+                                is-selected: root.filter-star-3;
+                                star-text: "3★";
+                                label-text: root.strings.star_3_desc;
+                                star-color: root.theme.yellow;
+                                theme: root.theme;
+                                clicked => { root.toggle-filter-star(3); }
+                            }
+
+                            // 2★ (Discarded)
+                            TreeSelectOption {
+                                is-selected: root.filter-star-2;
+                                star-text: "2★";
+                                label-text: root.strings.star_2_desc;
+                                star-color: root.theme.discard_fg;
+                                theme: root.theme;
+                                clicked => { root.toggle-filter-star(2); }
+                            }
+
+                            // 1★ (Quick Cleanup / Manual Delete)
+                            TreeSelectOption {
+                                is-selected: root.filter-star-1;
+                                star-text: "1★";
+                                label-text: root.strings.star_1_desc;
+                                star-color: root.theme.red;
+                                theme: root.theme;
+                                clicked => { root.toggle-filter-star(1); }
+                            }
+
+                            // 0★ (Unrated)
+                            TreeSelectOption {
+                                is-selected: root.filter-star-0;
+                                star-text: "0★";
+                                label-text: root.strings.star_0_desc;
+                                star-color: root.theme.overlay1;
+                                theme: root.theme;
+                                clicked => { root.toggle-filter-star(0); }
+                            }
+
+                            // Divider
+                            Rectangle { height: 1px; background: root.theme.surface0; }
+
+                            // Footer Quick Actions: Select All / Clear
+                            HorizontalLayout {
+                                padding-left: 6px;
+                                padding-right: 6px;
+                                padding-top: 4px;
+                                alignment: space-between;
+
+                                Rectangle {
+                                    Text {
+                                        text: root.strings.star_filter_all;
+                                        font-size: 10px;
+                                        font-weight: 600;
+                                        color: root.theme.mauve;
+                                        vertical-alignment: center;
+                                    }
+                                    TouchArea {
+                                        clicked => { root.select-all-filter-stars(); }
+                                        mouse-cursor: pointer;
+                                    }
+                                }
+
+                                Rectangle {
+                                    Text {
+                                        text: root.strings.star_filter_clear;
+                                        font-size: 10px;
+                                        font-weight: 600;
+                                        color: root.theme.subtext1;
+                                        vertical-alignment: center;
+                                    }
+                                    TouchArea {
+                                        clicked => { root.clear-filter-stars(); }
+                                        mouse-cursor: pointer;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Divider
+            Rectangle {
+                width: 1px;
+                background: root.theme.surface0;
+            }
+
+            // ------------------------------------------
+            // PANE 3: METADATA INSPECTOR (Strict min-width to prevent cutoff / horizontal scrolling)
+            // ------------------------------------------
+            Rectangle {
+                min-width: 320px;
+                preferred-width: 340px;
+                horizontal-stretch: 0;
+                vertical-stretch: 1;
+                background: root.theme.mantle.transparentize(15%);
+
+                if !root.has-selection : VerticalLayout {
+                    alignment: center;
+                    spacing: 12px;
+                    padding: 24px;
+
+                    HorizontalLayout {
+                        alignment: center;
+                        Image {
+                            source: @image-url("icons/book.svg");
+                            width: 36px;
+                            height: 36px;
+                            colorize: root.theme.overlay0;
+                        }
+                    }
+
+                    Text {
+                        text: root.strings.empty_title;
+                        color: root.theme.subtext0;
+                        font-size: 14px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                    }
+
+                    Text {
+                        text: root.strings.empty_desc;
+                        color: root.theme.overlay1;
+                        font-size: 12px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                    }
+                }
+
+                if root.has-selection : Flickable {
+                    content-height: inspector-layout.preferred-height + 32px;
+                    content-width: parent.width;
+
+                    inspector-layout := VerticalLayout {
+                        padding: 16px;
+                        spacing: 14px;
+                        width: parent.width;
+                        alignment: start;
+
+                        // Uncatalogued Prompt Banner
+                        if !root.inspector-has-note : Rectangle {
+                            border-radius: 8px;
+                            background: root.theme.peach.transparentize(85%);
+                            border-width: 1px;
+                            border-color: root.theme.peach.transparentize(60%);
+                            height: 60px;
+
+                            HorizontalLayout {
+                                padding-left: 12px;
+                                padding-right: 12px;
+                                spacing: 8px;
+                                alignment: space-between;
+
+                                VerticalLayout {
+                                    alignment: center;
+                                    spacing: 2px;
+
+                                    Text {
+                                        text: root.strings.uncatalogued_prompt_title;
+                                        color: root.theme.peach;
+                                        font-size: 12px;
+                                        font-weight: 700;
+                                    }
+                                    Text {
+                                        text: root.strings.uncatalogued_prompt_desc;
+                                        color: root.theme.subtext1;
+                                        font-size: 10px;
+                                    }
+                                }
+
+                                HudButton {
+                                    text: root.strings.create_note;
+                                    width: 88px;
+                                    height: 28px;
+                                    base-bg: root.theme.peach.transparentize(70%);
+                                    text-color: root.theme.peach;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                    y: (parent.height - self.height) / 2;
+                                    clicked => { root.import-selected(); }
+                                }
+                            }
+                        }
+
+                        // Header: Title & Basename
+                        VerticalLayout {
+                            spacing: 6px;
+
+                            Text {
+                                text: root.inspector-title != "" ? root.inspector-title : root.inspector-basename;
+                                color: root.theme.text;
+                                font-size: 15px;
+                                font-weight: 700;
+                                wrap: word-wrap;
+                            }
+
+                            Text {
+                                text: root.inspector-authors != "" ? (root.inspector-authors + " (" + root.inspector-year + ")") : ("Year: " + root.inspector-year);
+                                color: root.theme.subtext0;
+                                font-size: 12px;
+                            }
+
+                            if root.inspector-citekey != "" : HorizontalLayout {
+                                spacing: 8px;
+                                alignment: start;
+
+                                Image {
+                                    source: @image-url("icons/key.svg");
+                                    width: 13px;
+                                    height: 13px;
+                                    colorize: root.theme.mauve;
+                                    y: (parent.height - self.height) / 2;
+                                }
+
+                                Text {
+                                    text: "@" + root.inspector-citekey;
+                                    color: root.theme.mauve;
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    vertical-alignment: center;
+                                }
+
+                                HudButton {
+                                    text: "Copy";
+                                    width: 48px;
+                                    height: 22px;
+                                    font-size: 10px;
+                                    y: (parent.height - self.height) / 2;
+                                    clicked => { root.copy-citekey(); }
+                                }
+                            }
+                        }
+
+                        // Takeaway & Summary (Appendix) Input Block
+                        VerticalLayout {
+                            spacing: 6px;
+
+                            Text {
+                                text: root.strings.summary_header;
+                                color: root.theme.overlay1;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                            }
+
+                            Rectangle {
+                                border-radius: 6px;
+                                background: root.theme.base;
+                                border-width: 1px;
+                                border-color: sum-in.has-focus ? root.theme.mauve : root.theme.surface1;
+                                height: 58px;
+
+                                sum-in := TextInput {
+                                    text: root.inspector-summary;
+                                    color: root.theme.text;
+                                    font-size: 12px;
+                                    wrap: word-wrap;
+                                    x: 8px;
+                                    y: 6px;
+                                    width: parent.width - 16px;
+                                    height: parent.height - 12px;
+                                    edited => {
+                                        root.inspector-summary = self.text;
+                                        root.update-summary(self.text);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Divider
+                        Rectangle {
+                            height: 1px;
+                            background: root.theme.surface0;
+                        }
+
+                        // Reading Status Selector
+                        VerticalLayout {
+                            spacing: 8px;
+
+                            Text {
+                                text: root.strings.reading_status_header;
+                                color: root.theme.overlay1;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                            }
+
+                            HorizontalLayout {
+                                spacing: 4px;
+
+                                HudButton {
+                                    text: root.strings.status_unread;
+                                    height: 28px;
+                                    font-size: 11px;
+                                    base-bg: root.inspector-status == 0 ? root.theme.blue.transparentize(80%) : root.theme.surface0;
+                                    text-color: root.inspector-status == 0 ? root.theme.blue : root.theme.subtext1;
+                                    clicked => { root.update-status(0); }
+                                }
+
+                                HudButton {
+                                    text: root.strings.status_skimmed;
+                                    height: 28px;
+                                    font-size: 11px;
+                                    base-bg: root.inspector-status == 1 ? root.theme.mauve.transparentize(80%) : root.theme.surface0;
+                                    text-color: root.inspector-status == 1 ? root.theme.mauve : root.theme.subtext1;
+                                    clicked => { root.update-status(1); }
+                                }
+
+                                HudButton {
+                                    text: root.strings.status_deep;
+                                    height: 28px;
+                                    font-size: 11px;
+                                    base-bg: root.inspector-status == 2 ? root.theme.green.transparentize(80%) : root.theme.surface0;
+                                    text-color: root.inspector-status == 2 ? root.theme.green : root.theme.subtext1;
+                                    clicked => { root.update-status(2); }
+                                }
+
+                                HudButton {
+                                    text: root.strings.status_discarded;
+                                    height: 28px;
+                                    font-size: 11px;
+                                    base-bg: root.inspector-status == 3 ? root.theme.discard_bg : root.theme.surface0;
+                                    text-color: root.inspector-status == 3 ? root.theme.discard_fg : root.theme.subtext1;
+                                    font-weight: root.inspector-status == 3 ? 700 : 500;
+                                    clicked => { root.update-status(3); }
+                                }
+                            }
+                        }
+
+                        // Importance Rating Stars
+                        VerticalLayout {
+                            spacing: 8px;
+
+                            HorizontalLayout {
+                                alignment: space-between;
+
+                                Text {
+                                    text: root.strings.importance_rating_header;
+                                    color: root.theme.overlay1;
+                                    font-size: 10px;
+                                    font-weight: 700;
+                                    letter-spacing: 0.5px;
+                                }
+
+                                Text {
+                                    text: root.inspector-importance > 0 ? (root.inspector-importance + " / 5 " + root.strings.stars_unit) : root.strings.unrated;
+                                    color: root.theme.yellow;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                }
+                            }
+
+                            HorizontalLayout {
+                                spacing: 8px;
+
+                                for star-idx in [1, 2, 3, 4, 5] : Rectangle {
+                                    width: 36px;
+                                    height: 30px;
+                                    border-radius: 6px;
+                                    background: star-touch.has-hover ? root.theme.surface1 : (star-idx <= root.inspector-importance ? root.theme.yellow.transparentize(82%) : root.theme.surface0);
+                                    border-width: 1px;
+                                    border-color: star-idx <= root.inspector-importance ? root.theme.yellow.transparentize(50%) : root.theme.surface1;
+
+                                    star-touch := TouchArea {
+                                        clicked => {
+                                            if root.inspector-importance == star-idx {
+                                                root.update-importance(0);
+                                            } else {
+                                                root.update-importance(star-idx);
+                                            }
+                                        }
+                                        mouse-cursor: pointer;
+                                    }
+
+                                    Image {
+                                        source: star-idx <= root.inspector-importance ? @image-url("icons/star-fill.svg") : @image-url("icons/star.svg");
+                                        width: 16px;
+                                        height: 16px;
+                                        colorize: star-idx <= root.inspector-importance ? root.theme.yellow : root.theme.overlay0;
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Field Domain Info
+                        VerticalLayout {
+                            spacing: 6px;
+
+                            Text {
+                                text: root.strings.field_header;
+                                color: root.theme.overlay1;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                            }
+
+                            Rectangle {
+                                height: 32px;
+                                border-radius: 6px;
+                                background: root.theme.base;
+                                border-width: 1px;
+                                border-color: root.theme.surface1;
+
+                                HorizontalLayout {
+                                    padding-left: 12px;
+                                    spacing: 8px;
+                                    alignment: start;
+
+                                    Image {
+                                        source: @image-url("icons/folder.svg");
+                                        width: 13px;
+                                        height: 13px;
+                                        colorize: root.theme.lavender;
+                                        y: (parent.height - self.height) / 2;
+                                    }
+
+                                    Text {
+                                        text: root.inspector-field;
+                                        color: root.theme.text;
+                                        font-size: 12px;
+                                        font-weight: 500;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Projects Manager
+                        VerticalLayout {
+                            spacing: 8px;
+
+                            Text {
+                                text: root.strings.projects_header;
+                                color: root.theme.overlay1;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                            }
+
+                            HorizontalLayout {
+                                spacing: 6px;
+
+                                Rectangle {
+                                    height: 30px;
+                                    border-radius: 6px;
+                                    background: root.theme.base;
+                                    border-width: 1px;
+                                    border-color: root.theme.surface1;
+
+                                    HorizontalLayout {
+                                        padding-left: 8px;
+                                        padding-right: 8px;
+                                        alignment: center;
+
+                                        proj-in := TextInput {
+                                            text: root.new-project-input;
+                                            color: root.theme.text;
+                                            font-size: 12px;
+                                            vertical-alignment: center;
+                                            edited => { root.new-project-input = self.text; }
+                                            accepted => {
+                                                if self.text != "" {
+                                                    root.add-project(self.text);
+                                                    self.text = "";
+                                                    root.new-project-input = "";
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                HudButton {
+                                    text: "+ Add";
+                                    width: 60px;
+                                    height: 30px;
+                                    clicked => {
+                                        if root.new-project-input != "" {
+                                            root.add-project(root.new-project-input);
+                                            root.new-project-input = "";
+                                        }
+                                    }
+                                }
+                            }
+
+                            VerticalLayout {
+                                spacing: 6px;
+
+                                for p[p-idx] in root.inspector-projects : HorizontalLayout {
+                                    alignment: start;
+
+                                    TagChip {
+                                        text: p;
+                                        text-color: root.theme.teal;
+                                        base-bg: root.theme.teal.transparentize(88%);
+                                        border-col: root.theme.teal.transparentize(65%);
+                                        removable: true;
+                                        remove => { root.remove-project(p-idx); }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Tags Manager
+                        VerticalLayout {
+                            spacing: 8px;
+
+                            Text {
+                                text: root.strings.tags_header;
+                                color: root.theme.overlay1;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                            }
+
+                            HorizontalLayout {
+                                spacing: 6px;
+
+                                Rectangle {
+                                    height: 30px;
+                                    border-radius: 6px;
+                                    background: root.theme.base;
+                                    border-width: 1px;
+                                    border-color: root.theme.surface1;
+
+                                    HorizontalLayout {
+                                        padding-left: 8px;
+                                        padding-right: 8px;
+                                        alignment: center;
+
+                                        tag-in := TextInput {
+                                            text: root.new-tag-input;
+                                            color: root.theme.text;
+                                            font-size: 12px;
+                                            vertical-alignment: center;
+                                            edited => { root.new-tag-input = self.text; }
+                                            accepted => {
+                                                if self.text != "" {
+                                                    root.add-tag(self.text);
+                                                    self.text = "";
+                                                    root.new-tag-input = "";
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                HudButton {
+                                    text: "+ Add";
+                                    width: 60px;
+                                    height: 30px;
+                                    clicked => {
+                                        if root.new-tag-input != "" {
+                                            root.add-tag(root.new-tag-input);
+                                            root.new-tag-input = "";
+                                        }
+                                    }
+                                }
+                            }
+
+                            VerticalLayout {
+                                spacing: 6px;
+
+                                for t[t-idx] in root.inspector-tags : HorizontalLayout {
+                                    alignment: start;
+
+                                    TagChip {
+                                        text: "#" + t;
+                                        text-color: root.theme.sapphire;
+                                        base-bg: root.theme.sapphire.transparentize(88%);
+                                        border-col: root.theme.sapphire.transparentize(65%);
+                                        removable: true;
+                                        remove => { root.remove-tag(t-idx); }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Divider
+                        Rectangle {
+                            height: 1px;
+                            background: root.theme.surface0;
+                        }
+
+                        // System Actions
+                        VerticalLayout {
+                            spacing: 8px;
+
+                            Text {
+                                text: root.strings.system_actions_header;
+                                color: root.theme.overlay1;
+                                font-size: 10px;
+                                font-weight: 700;
+                                letter-spacing: 0.5px;
+                            }
+
+                            HudButton {
+                                text: root.inspector-has-pdf ? root.strings.reveal_pdf : root.strings.no_pdf;
+                                height: 32px;
+                                base-bg: root.inspector-has-pdf ? root.theme.surface0 : root.theme.red.transparentize(90%);
+                                text-color: root.inspector-has-pdf ? root.theme.text : root.theme.red;
+                                clicked => {
+                                    if root.inspector-has-pdf {
+                                        root.reveal-pdf();
+                                    }
+                                }
+                            }
+
+                            HudButton {
+                                text: root.inspector-has-note ? root.strings.reveal_note : root.strings.note_stub;
+                                height: 32px;
+                                clicked => { root.reveal-note(); }
+                            }
+
+                            HudButton {
+                                text: root.strings.copy_bibtex;
+                                height: 32px;
+                                clicked => { root.copy-bibtex(); }
+                            }
+
+                            HudButton {
+                                text: root.strings.copy_citekey + " (@" + root.inspector-citekey + ")";
+                                height: 32px;
+                                clicked => { root.copy-citekey(); }
+                            }
+
+                            HudButton {
+                                text: root.strings.move_to_trash;
+                                height: 32px;
+                                base-bg: root.theme.red.transparentize(88%);
+                                text-color: root.theme.red;
+                                hover-bg: root.theme.red.transparentize(75%);
+                                clicked => { root.delete-paper(); }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // SETTINGS & VAULT MANAGER MODAL OVERLAY
+    // ==========================================
+    if root.show-settings : Rectangle {
+        background: #0000003b;
+
+        TouchArea {
+            // Background blocker
+        }
+
+        Rectangle {
+            width: 700px;
+            height: 560px;
+            background: root.theme.base;
+            border-radius: 12px;
+            border-width: 1px;
+            border-color: root.theme.surface1;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+
+            VerticalLayout {
+                padding: 24px;
+                spacing: 16px;
+
+                // Header: Title & Close
+                HorizontalLayout {
+                    alignment: space-between;
+
+                    HorizontalLayout {
+                        spacing: 10px;
+                        alignment: start;
+
+                        Image {
+                            source: @image-url("icons/gear.svg");
+                            width: 18px;
+                            height: 18px;
+                            colorize: root.theme.mauve;
+                            y: (parent.height - self.height) / 2;
+                        }
+
+                        Text {
+                            text: root.strings.settings_title;
+                            color: root.theme.text;
+                            font-size: 16px;
+                            font-weight: 700;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    HudButton {
+                        text: root.strings.close;
+                        width: 72px;
+                        height: 28px;
+                        base-bg: root.theme.mauve;
+                        text-color: #ffffff;
+                        font-weight: 600;
+                        clicked => { root.close-settings(); }
+                    }
+                }
+
+                // Tab Switcher Buttons (Vaults | Themes | Language)
+                HorizontalLayout {
+                    spacing: 8px;
+
+                    HudButton {
+                        text: root.strings.vaults_tab;
+                        height: 32px;
+                        base-bg: root.settings-tab == 0 ? root.theme.mauve.transparentize(80%) : root.theme.surface0;
+                        text-color: root.settings-tab == 0 ? root.theme.mauve : root.theme.subtext1;
+                        font-weight: root.settings-tab == 0 ? 700 : 500;
+                        clicked => { root.set-settings-tab(0); }
+                    }
+
+                    HudButton {
+                        text: root.strings.theme_tab;
+                        height: 32px;
+                        base-bg: root.settings-tab == 1 ? root.theme.mauve.transparentize(80%) : root.theme.surface0;
+                        text-color: root.settings-tab == 1 ? root.theme.mauve : root.theme.subtext1;
+                        font-weight: root.settings-tab == 1 ? 700 : 500;
+                        clicked => { root.set-settings-tab(1); }
+                    }
+
+                    HudButton {
+                        text: root.strings.language_tab;
+                        height: 32px;
+                        base-bg: root.settings-tab == 2 ? root.theme.mauve.transparentize(80%) : root.theme.surface0;
+                        text-color: root.settings-tab == 2 ? root.theme.mauve : root.theme.subtext1;
+                        font-weight: root.settings-tab == 2 ? 700 : 500;
+                        clicked => { root.set-settings-tab(2); }
+                    }
+                }
+
+                Rectangle {
+                    height: 1px;
+                    background: root.theme.surface0;
+                }
+
+                // Tab 0: Vaults Manager (Obsidian-like)
+                if root.settings-tab == 0 : VerticalLayout {
+                    spacing: 12px;
+                    vertical-stretch: 1;
+
+                    // Add vault action button
+                    HudButton {
+                        text: root.strings.add_vault;
+                        height: 34px;
+                        base-bg: root.theme.surface0;
+                        hover-bg: root.theme.surface1;
+                        text-color: root.theme.mauve;
+                        font-weight: 600;
+                        clicked => { root.add-vault-dialog(); }
+                    }
+
+                    // Vaults list
+                    Flickable {
+                        content-height: vaults-list.preferred-height + 16px;
+                        vertical-stretch: 1;
+
+                        vaults-list := VerticalLayout {
+                            spacing: 8px;
+
+                            for vault in root.registered-vaults : Rectangle {
+                                height: 54px;
+                                border-radius: 8px;
+                                background: vault.is_active ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
+                                border-width: 1px;
+                                border-color: vault.is_active ? root.theme.mauve.transparentize(60%) : root.theme.surface0;
+
+                                HorizontalLayout {
+                                    padding-left: 14px;
+                                    padding-right: 14px;
+                                    spacing: 12px;
+                                    alignment: space-between;
+
+                                    VerticalLayout {
+                                        alignment: center;
+                                        spacing: 2px;
+
+                                        HorizontalLayout {
+                                            spacing: 8px;
+                                            alignment: start;
+
+                                            Image {
+                                                source: @image-url("icons/folder.svg");
+                                                width: 14px;
+                                                height: 14px;
+                                                colorize: vault.is_active ? root.theme.mauve : root.theme.subtext1;
+                                                y: (parent.height - self.height) / 2;
+                                            }
+
+                                            Text {
+                                                text: vault.name;
+                                                color: root.theme.text;
+                                                font-size: 13px;
+                                                font-weight: 700;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+
+                                        Text {
+                                            text: vault.path;
+                                            color: root.theme.overlay1;
+                                            font-size: 11px;
+                                            overflow: elide;
+                                        }
+                                    }
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+                                        alignment: end;
+
+                                        if vault.is_active : Rectangle {
+                                            height: 24px;
+                                            border-radius: 4px;
+                                            background: root.theme.green.transparentize(85%);
+                                            border-width: 1px;
+                                            border-color: root.theme.green.transparentize(60%);
+                                            y: (parent.height - self.height) / 2;
+
+                                            HorizontalLayout {
+                                                padding-left: 8px;
+                                                padding-right: 8px;
+                                                alignment: center;
+
+                                                Text {
+                                                    text: "● " + root.strings.active_vault;
+                                                    color: root.theme.green;
+                                                    font-size: 11px;
+                                                    font-weight: 600;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+                                        }
+
+                                        if !vault.is_active : HudButton {
+                                            text: root.strings.switch_vault;
+                                            width: 90px;
+                                            height: 26px;
+                                            font-size: 11px;
+                                            base-bg: root.theme.surface0;
+                                            text-color: root.theme.text;
+                                            y: (parent.height - self.height) / 2;
+                                            clicked => { root.switch-vault(vault.path); }
+                                        }
+
+                                        HudButton {
+                                            text: root.strings.unmanage_vault;
+                                            width: 76px;
+                                            height: 26px;
+                                            font-size: 11px;
+                                            base-bg: root.theme.red.transparentize(90%);
+                                            hover-bg: root.theme.red.transparentize(75%);
+                                            text-color: root.theme.red;
+                                            y: (parent.height - self.height) / 2;
+                                            clicked => { root.remove-vault(vault.path); }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: root.strings.unmanage_hint;
+                        color: root.theme.overlay1;
+                        font-size: 11px;
+                    }
+                }
+
+                // Tab 1: Themes Selection (5 Literary / Scholarly Palettes)
+                if root.settings-tab == 1 : VerticalLayout {
+                    spacing: 8px;
+                    vertical-stretch: 1;
+
+                    // 1. Parchment Warm
+                    Rectangle {
+                        height: 54px;
+                        border-radius: 8px;
+                        background: root.current-theme-id == "parchment" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
+                        border-width: 1px;
+                        border-color: root.current-theme-id == "parchment" ? root.theme.mauve : root.theme.surface0;
+
+                        TouchArea {
+                            clicked => { root.switch-theme("parchment"); }
+                            mouse-cursor: pointer;
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            spacing: 14px;
+                            alignment: space-between;
+
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "米黄古雅 · 羊皮纸 (Parchment Warm - 默认推荐)";
+                                    color: root.theme.text;
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                }
+                                Text {
+                                    text: "温润泛黄羊皮纸底色，深邃典雅古墨色字体，尽显藏书楼古籍书香。";
+                                    color: root.theme.subtext1;
+                                    font-size: 11px;
+                                }
+                            }
+
+                            if root.current-theme-id == "parchment" : Text {
+                                text: "✓";
+                                color: root.theme.mauve;
+                                font-size: 18px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    // 2. Rosé Pine Dawn
+                    Rectangle {
+                        height: 54px;
+                        border-radius: 8px;
+                        background: root.current-theme-id == "rose_pine_dawn" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
+                        border-width: 1px;
+                        border-color: root.current-theme-id == "rose_pine_dawn" ? root.theme.mauve : root.theme.surface0;
+
+                        TouchArea {
+                            clicked => { root.switch-theme("rose_pine_dawn"); }
+                            mouse-cursor: pointer;
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            spacing: 14px;
+                            alignment: space-between;
+
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "典雅暮光 · Rosé Pine Dawn";
+                                    color: root.theme.text;
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                }
+                                Text {
+                                    text: "经典晨曦暮光色系，温柔紫调墨色与暖纸白，静谧柔和。";
+                                    color: root.theme.subtext1;
+                                    font-size: 11px;
+                                }
+                            }
+
+                            if root.current-theme-id == "rose_pine_dawn" : Text {
+                                text: "✓";
+                                color: root.theme.mauve;
+                                font-size: 18px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    // 3. Solarized Light
+                    Rectangle {
+                        height: 54px;
+                        border-radius: 8px;
+                        background: root.current-theme-id == "solarized_light" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
+                        border-width: 1px;
+                        border-color: root.current-theme-id == "solarized_light" ? root.theme.mauve : root.theme.surface0;
+
+                        TouchArea {
+                            clicked => { root.switch-theme("solarized_light"); }
+                            mouse-cursor: pointer;
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            spacing: 14px;
+                            alignment: space-between;
+
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "经典学术 · Solarized Light";
+                                    color: root.theme.text;
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                }
+                                Text {
+                                    text: "经典学术界米黄色配方，精准的蓝青色彩空间，舒适护眼。";
+                                    color: root.theme.subtext1;
+                                    font-size: 11px;
+                                }
+                            }
+
+                            if root.current-theme-id == "solarized_light" : Text {
+                                text: "✓";
+                                color: root.theme.mauve;
+                                font-size: 18px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    // 4. Antique Ivory
+                    Rectangle {
+                        height: 54px;
+                        border-radius: 8px;
+                        background: root.current-theme-id == "antique_ivory" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
+                        border-width: 1px;
+                        border-color: root.current-theme-id == "antique_ivory" ? root.theme.mauve : root.theme.surface0;
+
+                        TouchArea {
+                            clicked => { root.switch-theme("antique_ivory"); }
+                            mouse-cursor: pointer;
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            spacing: 14px;
+                            alignment: space-between;
+
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "线装古籍 · 象牙宣纸 (Antique Ivory)";
+                                    color: root.theme.text;
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                }
+                                Text {
+                                    text: "纯正微暖宣纸底色，徽墨深灰与朱砂赭石点缀，古色古香。";
+                                    color: root.theme.subtext1;
+                                    font-size: 11px;
+                                }
+                            }
+
+                            if root.current-theme-id == "antique_ivory" : Text {
+                                text: "✓";
+                                color: root.theme.mauve;
+                                font-size: 18px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    // 5. Catppuccin Latte
+                    Rectangle {
+                        height: 54px;
+                        border-radius: 8px;
+                        background: root.current-theme-id == "catppuccin_latte" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
+                        border-width: 1px;
+                        border-color: root.current-theme-id == "catppuccin_latte" ? root.theme.mauve : root.theme.surface0;
+
+                        TouchArea {
+                            clicked => { root.switch-theme("catppuccin_latte"); }
+                            mouse-cursor: pointer;
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            spacing: 14px;
+                            alignment: space-between;
+
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "现代清爽 · Catppuccin Latte";
+                                    color: root.theme.text;
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                }
+                                Text {
+                                    text: "冷调现代浅色粉彩风格，高辨识度与极简清爽。";
+                                    color: root.theme.subtext1;
+                                    font-size: 11px;
+                                }
+                            }
+
+                            if root.current-theme-id == "catppuccin_latte" : Text {
+                                text: "✓";
+                                color: root.theme.mauve;
+                                font-size: 18px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+
+                // Tab 2: Language Selection
+                if root.settings-tab == 2 : VerticalLayout {
+                    spacing: 10px;
+                    vertical-stretch: 1;
+
+                    Rectangle {
+                        height: 58px;
+                        border-radius: 8px;
+                        background: root.current-language == "zh" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
+                        border-width: 1px;
+                        border-color: root.current-language == "zh" ? root.theme.mauve : root.theme.surface0;
+
+                        TouchArea {
+                            clicked => { root.switch-language("zh"); }
+                            mouse-cursor: pointer;
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            alignment: space-between;
+
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "简体中文 (Simplified Chinese)";
+                                    color: root.theme.text;
+                                    font-size: 14px;
+                                    font-weight: 700;
+                                }
+                                Text {
+                                    text: "完整支持中文菜单、按钮与文献状态术语";
+                                    color: root.theme.subtext1;
+                                    font-size: 11px;
+                                }
+                            }
+
+                            if root.current-language == "zh" : Text {
+                                text: "✓";
+                                color: root.theme.mauve;
+                                font-size: 18px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        height: 58px;
+                        border-radius: 8px;
+                        background: root.current-language == "en" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
+                        border-width: 1px;
+                        border-color: root.current-language == "en" ? root.theme.mauve : root.theme.surface0;
+
+                        TouchArea {
+                            clicked => { root.switch-language("en"); }
+                            mouse-cursor: pointer;
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            alignment: space-between;
+
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "English (US / UK)";
+                                    color: root.theme.text;
+                                    font-size: 14px;
+                                    font-weight: 700;
+                                }
+                                Text {
+                                    text: "Standard English interface terminology";
+                                    color: root.theme.subtext1;
+                                    font-size: 11px;
+                                }
+                            }
+
+                            if root.current-language == "en" : Text {
+                                text: "✓";
+                                color: root.theme.mauve;
+                                font-size: 18px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
