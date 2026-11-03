@@ -797,16 +797,24 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Setup native macOS seamless titlebar integration & window sizing bounds
     #[cfg(target_os = "macos")]
-    let _timer = {
-        let timer = slint::Timer::default();
-        timer.start(
+    let (_timer_fast, _timer_fallback) = {
+        let t1 = slint::Timer::default();
+        t1.start(
             slint::TimerMode::SingleShot,
-            std::time::Duration::from_millis(60),
+            std::time::Duration::from_millis(50),
             move || {
                 let _ = setup_macos_vibrancy();
             },
         );
-        timer
+        let t2 = slint::Timer::default();
+        t2.start(
+            slint::TimerMode::SingleShot,
+            std::time::Duration::from_millis(200),
+            move || {
+                let _ = setup_macos_vibrancy();
+            },
+        );
+        (t1, t2)
     };
 
     slint::run_event_loop()?;

@@ -35,12 +35,24 @@ pub fn setup_macos_vibrancy() -> bool {
             std::mem::transmute(objc_msgSend.as_ptr());
 
         let windows = msg_send_obj(shared_app, sel_windows as _);
-        if windows.is_null() {
-            return false;
-        }
-
-        let count = msg_send_usize(windows, sel_count as _);
+        let count = if windows.is_null() { 0 } else { msg_send_usize(windows, sel_count as _) };
         if count == 0 {
+            let sel_key_window = sel_registerName(b"keyWindow\0".as_ptr() as *const _);
+            let sel_main_window = sel_registerName(b"mainWindow\0".as_ptr() as *const _);
+            let key_win = msg_send_obj(shared_app, sel_key_window as _);
+            let main_win = msg_send_obj(shared_app, sel_main_window as _);
+            let fallback_win = if !key_win.is_null() {
+                key_win
+            } else if !main_win.is_null() {
+                main_win
+            } else {
+                std::ptr::null_mut()
+            };
+
+            if !fallback_win.is_null() {
+                apply_vibrancy_to_nswindow(fallback_win);
+                return true;
+            }
             return false;
         }
 
@@ -124,9 +136,11 @@ unsafe fn apply_vibrancy_to_nswindow(window: *mut std::ffi::c_void) {
     // titlebarSeparatorStyle = NSTitlebarSeparatorStyleNone (0)
     msg_send_usize_set(window, sel_set_separator_style as _, 0);
 
-    // setToolbarStyle: NSWindowToolbarStyleUnified (1)
+    // setToolbarStyle: NSWindowToolbarStyleUnified (3)
+    // Note: 0 = Automatic, 1 = Expanded, 2 = Preference, 3 = Unified, 4 = UnifiedCompact
+    // Value 3 (Unified) expands titlebar height to 52.0pt and natively positions traffic lights at (19.0, 18.0).
     let sel_set_toolbar_style = sel_registerName(b"setToolbarStyle:\0".as_ptr() as *const _);
-    msg_send_usize_set(window, sel_set_toolbar_style as _, 1);
+    msg_send_usize_set(window, sel_set_toolbar_style as _, 3);
 
     // Attach an empty NSToolbar to switch window into unified toolbar mode.
     // In unified toolbar mode, macOS automatically places the traffic lights at (20pt, 20pt) from top-left,
