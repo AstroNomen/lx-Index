@@ -72,7 +72,7 @@ Lucentia Aesthetics Laboratory | Pure Compiled Native Desktop Application
 
 【快速上手 / Quick Start】
 1. 双击运行 `lx-index.exe` 启动软件。
-2. 首次运行可点击顶部左侧的文献库胶囊或右上角设置，选择本地文件夹作为文献库（Vault）。
+2. 首次运行请点击左下角 App Bar 的“文献库”或“设置”按钮，选择本地文件夹作为文献库（Vault）。
    - 例如文献库目录结构：
      <Vault_Root>/
        ├── Optical_Computing/
