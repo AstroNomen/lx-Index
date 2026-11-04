@@ -284,7 +284,7 @@ pub fn copy_bibtex_to_clipboard(note_path: &std::path::Path) -> Result<(), Box<d
 ### Phase 5: Production Packaging
 
 - [x] Package macOS universal binary and bundle into `.app` / `.dmg` (Completed in v0.5.0).
-- [x] Package Windows standalone portable executable (`lx-index.exe`) and installer/zip (Completed in v0.5.1).
+- [x] Package Windows standalone portable executable (`lx-index.exe`) and installer/zip (Completed in v0.6.0).
 
 ---
 
