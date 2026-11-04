@@ -79,7 +79,7 @@ Lucentia Aesthetics Laboratory | Pure Compiled Native Desktop Application
        │   ├── notes/
        │   │   └── 2026_Author_Title.md
        │   └── 2026_Author_Title.pdf
-3. 顶栏 Pivot 标签可在【全景画卷】、【看板概览】、【文献列表】、【文献检视】、【分类矩阵】间灵活切换。
+3. 左侧栏可在文献状态、研究领域和关联项目之间筛选；中间底部 App Bar 提供搜索与星级筛选。
 4. 全局配置文件默认保存在 `%APPDATA%\lx-index\config.yaml`，便于跨机漫游备份。
 
 【关于 / About】
