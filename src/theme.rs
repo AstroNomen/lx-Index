@@ -56,6 +56,8 @@ pub struct AppTheme {
     pub base: String,
     pub mantle: String,
     pub crust: String,
+    pub accent: String,
+    pub accent_secondary: String,
     pub discard_bg: String,
     pub discard_fg: String,
     pub reset_bg: String,
@@ -97,6 +99,8 @@ impl AppTheme {
             base: "#fbf5ea".to_string(),   // 温暖米黄底 (Warm Light Parchment)
             mantle: "#f4ece1".to_string(), // 次级羊皮纸色
             crust: "#ebe1d3".to_string(),  // 顶栏装订色
+            accent: "#7a434d".to_string(), // 古典绛红/漆器酒红 (Antique Lacquer Red)
+            accent_secondary: "#b55a30".to_string(), // 陶土赭石 (Terracotta)
             discard_bg: "#6b585022".to_string(),
             discard_fg: "#3e2e28".to_string(), // 纯正深褐色废弃色，高对比高可读
             reset_bg: "#e2d5c366".to_string(),
@@ -138,6 +142,8 @@ impl AppTheme {
             base: "#fdf6e3".to_string(),   // base3
             mantle: "#eee8d5".to_string(), // base2
             crust: "#e0d8c3".to_string(),
+            accent: "#268bd2".to_string(), // Academic Blue
+            accent_secondary: "#2aa198".to_string(), // Celadon Teal
             discard_bg: "#586e7525".to_string(),
             discard_fg: "#073642".to_string(),
             reset_bg: "#eee8d5".to_string(),
@@ -179,6 +185,8 @@ impl AppTheme {
             base: "#fbf1c7".to_string(),   // 宣纸象牙黄 (Warm Xuan paper)
             mantle: "#f2e5bc".to_string(),
             crust: "#ebdbb2".to_string(),
+            accent: "#9d0006".to_string(), // 徽墨朱砂红 (Cinnabar Rust Red)
+            accent_secondary: "#b57614".to_string(), // 典雅黄铜 (Antique Brass Amber)
             discard_bg: "#665c5425".to_string(),
             discard_fg: "#282828".to_string(),
             reset_bg: "#ebdbb2".to_string(),
@@ -220,6 +228,8 @@ impl AppTheme {
             base: "#eff1f5".to_string(),
             mantle: "#e6e9ef".to_string(),
             crust: "#dce0e8".to_string(),
+            accent: "#8839ef".to_string(), // Mauve Purple
+            accent_secondary: "#ea76cb".to_string(), // Pink
             discard_bg: "#5c5f7725".to_string(),
             discard_fg: "#2a2d40".to_string(),
             reset_bg: "#ccd0da55".to_string(),
@@ -261,6 +271,8 @@ impl AppTheme {
             base: "#faf4ed".to_string(),   // base
             mantle: "#fffaf3".to_string(), // surface
             crust: "#f2e9de".to_string(),  // overlay
+            accent: "#907aa9".to_string(), // Iris Purple
+            accent_secondary: "#eb6f92".to_string(), // Love Rose
             discard_bg: "#79759325".to_string(),
             discard_fg: "#3d385a".to_string(),
             reset_bg: "#f2e9de".to_string(),
@@ -272,10 +284,10 @@ impl AppTheme {
 
     pub fn by_id(id: &str) -> Self {
         match id {
-            "solarized_light" => Self::solarized_light(),
-            "antique_ivory" => Self::antique_ivory(),
-            "rose_pine_dawn" => Self::rose_pine_dawn(),
-            "catppuccin_latte" => Self::catppuccin_latte(),
+            "solarized_light" | "solarized" => Self::solarized_light(),
+            "antique_ivory" | "ivory" => Self::antique_ivory(),
+            "rose_pine_dawn" | "rose-pine" | "rose_pine" => Self::rose_pine_dawn(),
+            "catppuccin_latte" | "latte" | "catppuccin" => Self::catppuccin_latte(),
             _ => Self::parchment(),
         }
     }
@@ -319,6 +331,8 @@ impl AppTheme {
             base: parse_hex_color(&self.base),
             mantle: parse_hex_color(&self.mantle),
             crust: parse_hex_color(&self.crust),
+            accent: parse_hex_color(&self.accent),
+            accent_secondary: parse_hex_color(&self.accent_secondary),
             discard_bg: parse_hex_color(&self.discard_bg),
             discard_fg: parse_hex_color(&self.discard_fg),
             reset_bg: parse_hex_color(&self.reset_bg),

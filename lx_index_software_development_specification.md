@@ -276,15 +276,15 @@ pub fn copy_bibtex_to_clipboard(note_path: &std::path::Path) -> Result<(), Box<d
 
 ### Phase 4: Windows 10/11 Fluent & Metro Adaptation
 
-- [ ] Verify clean compilation on Windows (`cargo build --target x86_64-pc-windows-msvc`).
-- [ ] Adapt UI styling parameters for Windows: Apply `Segoe UI Variable`, crisp micro-rounded corners (4px), and Metro / Fluent cards.
-- [ ] Test Explorer reveal command (`explorer /select,`) and normalize path separators (`\` vs `/`).
-- [ ] Embed `assets/app_icon.ico` into `lx-index.exe` via `winres` in `build.rs`.
+- [x] Verify clean compilation on Windows (`cargo build --target x86_64-pc-windows-msvc`).
+- [x] Adapt UI styling parameters for Windows: Apply `Segoe UI Variable`, crisp micro-rounded corners (4px), and Metro / Fluent cards.
+- [x] Test Explorer reveal command (`explorer /select,`) and normalize path separators (`\` vs `/`).
+- [x] Embed `assets/app_icon.ico` into `lx-index.exe` via `winres` in `build.rs`.
 
 ### Phase 5: Production Packaging
 
 - [x] Package macOS universal binary and bundle into `.app` / `.dmg` (Completed in v0.5.0).
-- [ ] Package Windows standalone portable executable (`lx-index.exe`) and installer/zip.
+- [x] Package Windows standalone portable executable (`lx-index.exe`) and installer/zip (Completed in v0.5.1).
 
 ---
 
@@ -292,7 +292,7 @@ pub fn copy_bibtex_to_clipboard(note_path: &std::path::Path) -> Result<(), Box<d
 
 > [!IMPORTANT]
 > **For the Windows Development Agent**:
-> The macOS primary implementation has reached milestone **v0.5.0 (Beta)**. The entire Rust backend (`src/scanner.rs`, `src/frontmatter.rs`, `src/state.rs`, `src/watcher.rs`, `src/ops.rs`, `src/i18n.rs`) is production-tested, fully unit-tested, and platform-agnostic.
+> The macOS primary implementation has reached milestone **v0.5.1 (Beta)**. The entire Rust backend (`src/scanner.rs`, `src/frontmatter.rs`, `src/state.rs`, `src/watcher.rs`, `src/ops.rs`, `src/i18n.rs`) is production-tested, fully unit-tested, and platform-agnostic.
 > When developing the Windows version, **you must maintain 100% data and functional parity** with the backend contract outlined below. While the UI should adopt native Windows Fluent/Metro aesthetics, the underlying library structures, YAML frontmatter schemas, and business workflows must remain identical so that researchers synchronizing vaults via OneDrive between macOS and Windows experience zero friction.
 
 ### 8.1 Core Functional Contracts (Strict Parity Required)
@@ -371,9 +371,9 @@ pub fn copy_bibtex_to_clipboard(note_path: &std::path::Path) -> Result<(), Box<d
     importance: 0
     tags: []
     ---
-
+    
     # <Title>
-
+    
     ## 0. Personal Insights
     ```
 
@@ -434,7 +434,8 @@ pub fn copy_bibtex_to_clipboard(note_path: &std::path::Path) -> Result<(), Box<d
      4. `象牙古籍 · Antique Ivory`
      5. `清雅现代 · Catppuccin Latte`
 6. **About Modal & Brand Information**:
-   - Version: `0.5.0`
+   
+   - Version: `0.5.1`
    - Brand & Studio: `Designed & Developed by Lucentia`
    - Tagline: `Literature HUD & Companion Workspace` (文献管理 HUD 与伴生工作空间)
    - Copyright: `© 2026 Lucentia. All rights reserved.`

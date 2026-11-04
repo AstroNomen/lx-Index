@@ -1,3 +1,5 @@
+#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
+
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
@@ -9,6 +11,7 @@ use lx_index::ops::{
     copy_bibtex_to_clipboard, copy_citekey_to_clipboard, pick_folder, reveal_in_file_manager,
 };
 use lx_index::state::AppState;
+#[cfg(target_os = "macos")]
 use lx_index::vibrancy::setup_macos_vibrancy;
 use lx_index::watcher::{create_shared_watcher, restart_watcher, SharedWatcher};
 use lx_index::{AppWindow, SlintCategoryItem, SlintPaperItem, SlintVaultItem};
@@ -46,7 +49,7 @@ fn sync_ui(ui: &AppWindow, state: &AppState) {
     }
     #[cfg(not(target_os = "macos"))]
     {
-        ui.set_brand_script_font("Georgia".into());
+        ui.set_brand_script_font("Segoe Script".into());
         ui.set_brand_serif_font("Georgia".into());
     }
 
@@ -85,9 +88,9 @@ fn sync_ui(ui: &AppWindow, state: &AppState) {
         ui.set_vault_path(path_str.into());
     } else {
         let placeholder = if state.language == "zh" {
-            "点击打开文献库..."
+            "在左下角选择或添加文献库"
         } else {
-            "Click to Open Vault..."
+            "Select or add a library in bottom-left"
         };
         ui.set_vault_name(placeholder.into());
         ui.set_vault_path("".into());
@@ -258,28 +261,35 @@ fn main() -> Result<(), Box<dyn Error>> {
         ui.on_search_query_changed(move |query| {
             let mut state = state_rc.lock().unwrap();
             state.search_query = query.to_string();
+            state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
                 sync_ui(&ui, &state);
             }
         });
     }
 
-    // 2. Select Perspective Callback
+    // 2. Select Perspective Callback (Toggle support)
     {
         let ui_handle = ui.as_weak();
         let state_rc = state.clone();
         ui.on_select_perspective(move |persp| {
             let mut state = state_rc.lock().unwrap();
-            state.active_perspective = persp.to_string();
+            let p = persp.to_string();
+            if state.active_perspective == p && p != "all" {
+                state.active_perspective = "all".to_string();
+            } else {
+                state.active_perspective = p;
+            }
             state.active_field = None;
             state.active_project = None;
+            state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
                 sync_ui(&ui, &state);
             }
         });
     }
 
-    // 3. Select Field Callback
+    // 3. Select Field Callback (Toggle support)
     {
         let ui_handle = ui.as_weak();
         let state_rc = state.clone();
@@ -291,13 +301,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 state.active_field = Some(f);
             }
+            state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
                 sync_ui(&ui, &state);
             }
         });
     }
 
-    // 4. Select Project Callback
+    // 4. Select Project Callback (Toggle support)
     {
         let ui_handle = ui.as_weak();
         let state_rc = state.clone();
@@ -309,6 +320,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 state.active_project = Some(p);
             }
+            state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
                 sync_ui(&ui, &state);
             }
@@ -326,8 +338,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             state.active_field = None;
             state.active_project = None;
             state.clear_filter_stars();
+            state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
                 ui.set_search_query("".into());
+                #[cfg(target_os = "windows")]
+                ui.set_search_expanded(false);
                 ui.set_star_filter_open(false);
                 sync_ui(&ui, &state);
             }
@@ -341,6 +356,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ui.on_toggle_filter_star(move |star| {
             let mut state = state_rc.lock().unwrap();
             state.toggle_filter_star(star as u8);
+            state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
                 sync_ui(&ui, &state);
             }
@@ -354,6 +370,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ui.on_clear_filter_stars(move || {
             let mut state = state_rc.lock().unwrap();
             state.clear_filter_stars();
+            state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
                 sync_ui(&ui, &state);
             }
@@ -367,24 +384,42 @@ fn main() -> Result<(), Box<dyn Error>> {
         ui.on_select_all_filter_stars(move || {
             let mut state = state_rc.lock().unwrap();
             state.select_all_filter_stars();
+            state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
                 sync_ui(&ui, &state);
             }
         });
     }
 
-    // 6. Select Item Callback
+    // 6. Select Item Callback (Toggle support & selection cancellation)
     {
         let ui_handle = ui.as_weak();
         let state_rc = state.clone();
         ui.on_select_item(move |idx| {
             let mut state = state_rc.lock().unwrap();
-            let filtered = state.filtered_items();
-            if let Some(item) = filtered.get(idx as usize) {
-                state.selected_id = Some(item.id.clone());
+            let target_id = if idx >= 0 {
+                state.filtered_items().get(idx as usize).map(|i| i.id.clone())
+            } else {
+                None
+            };
+
+            if let Some(ref tid) = target_id {
+                if state.selected_id.as_deref() == Some(tid.as_str()) {
+                    state.selected_id = None;
+                } else {
+                    state.selected_id = Some(tid.clone());
+                }
+            } else {
+                state.selected_id = None;
             }
+
             if let Some(ui) = ui_handle.upgrade() {
-                ui.set_selected_index(idx);
+                let sel_idx = if let Some(ref sel_id) = state.selected_id {
+                    state.filtered_items().iter().position(|i| &i.id == sel_id).map(|p| p as i32).unwrap_or(-1)
+                } else {
+                    -1
+                };
+                ui.set_selected_index(sel_idx);
                 sync_inspector(&ui, &state);
             }
         });
@@ -786,6 +821,24 @@ fn main() -> Result<(), Box<dyn Error>> {
         });
     }
 
+    // 24. Frameless Window Controls (Windows only)
+    #[cfg(target_os = "windows")]
+    {
+        ui.on_window_drag(move || {
+            lx_index::ops::window_drag();
+        });
+        ui.on_window_minimize(move || {
+            lx_index::ops::window_minimize();
+        });
+        ui.on_window_toggle_maximize(move || {
+            lx_index::ops::window_toggle_maximize();
+        });
+        ui.on_window_close(move || {
+            lx_index::ops::window_close();
+        });
+        ui.set_window_no_frame(true);
+    }
+
     // Initialize UI State
     {
         let st = state.lock().unwrap();
@@ -794,6 +847,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Show window first so native NSWindow exists on macOS
     ui.show()?;
+
+    // Setup native Windows borderless drop shadow & DWM styling
+    #[cfg(target_os = "windows")]
+    let _win_shadow_timer = {
+        let t = slint::Timer::default();
+        t.start(
+            slint::TimerMode::SingleShot,
+            std::time::Duration::from_millis(60),
+            move || {
+                lx_index::ops::setup_windows_window();
+            },
+        );
+        t
+    };
 
     // Setup native macOS seamless titlebar integration & window sizing bounds
     #[cfg(target_os = "macos")]
