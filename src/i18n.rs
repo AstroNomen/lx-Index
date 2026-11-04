@@ -47,9 +47,15 @@ pub fn get_i18n_strings(lang: &str) -> I18nStrings {
             star_1_desc: "待清理".into(),
             star_0_desc: "未评级".into(),
             system_actions_header: "系统操作".into(),
+            #[cfg(target_os = "macos")]
             reveal_pdf: "在访达中定位 PDF".into(),
+            #[cfg(not(target_os = "macos"))]
+            reveal_pdf: "本地定位 PDF".into(),
             no_pdf: "未找到对应 PDF".into(),
+            #[cfg(target_os = "macos")]
             reveal_note: "在访达中定位笔记".into(),
+            #[cfg(not(target_os = "macos"))]
+            reveal_note: "本地定位笔记".into(),
             note_stub: "无伴生笔记".into(),
             copy_bibtex: "复制 BibTeX 引用".into(),
             copy_citekey: "复制 Citekey".into(),
@@ -129,9 +135,15 @@ pub fn get_i18n_strings(lang: &str) -> I18nStrings {
             star_1_desc: "To Delete".into(),
             star_0_desc: "Unrated".into(),
             system_actions_header: "SYSTEM ACTIONS".into(),
+            #[cfg(target_os = "macos")]
             reveal_pdf: "Reveal PDF in Finder".into(),
+            #[cfg(not(target_os = "macos"))]
+            reveal_pdf: "Reveal PDF in Folder".into(),
             no_pdf: "PDF Not Found".into(),
+            #[cfg(target_os = "macos")]
             reveal_note: "Reveal Note in Finder".into(),
+            #[cfg(not(target_os = "macos"))]
+            reveal_note: "Reveal Note in Folder".into(),
             note_stub: "Note Stub Available".into(),
             copy_bibtex: "Copy BibTeX Citation".into(),
             copy_citekey: "Copy Citekey".into(),

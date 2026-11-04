@@ -1,0 +1,2800 @@
+import { SlintPaperItem, SlintCategoryItem, SlintVaultItem, ThemeColors, I18nStrings } from "models.slint";
+import { ListView } from "std-widgets.slint";
+
+// =========================================================================
+// Metro UI Reusable Components (Windows 8 Modern UI Paradigm)
+// =========================================================================
+
+// Flat Metro Button
+component MetroButton inherits Rectangle {
+    in-out property <string> text: "";
+    in-out property <color> text-color: #2c2523;
+    in-out property <color> base-bg: #e2d5c3;
+    in-out property <color> hover-bg: #d5c6b0;
+    in-out property <color> active-bg: #c3b299;
+    in-out property <color> border-col: #00000000;
+    in-out property <length> font-size: 12px;
+    in-out property <int> font-weight: 500;
+    in-out property <image> icon-src;
+    in-out property <bool> has-icon: false;
+    callback clicked();
+
+    background: touch.pressed ? root.active-bg : (touch.has-hover ? root.hover-bg : root.base-bg);
+    border-radius: 2px;
+    border-width: 1px;
+    border-color: root.border-col;
+    animate background { duration: 100ms; }
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+        mouse-cursor: pointer;
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 6px;
+        alignment: center;
+
+        if root.has-icon : Image {
+            source: root.icon-src;
+            width: 13px;
+            height: 13px;
+            image-fit: contain;
+            colorize: root.text-color;
+            y: (parent.height - self.height) / 2;
+        }
+
+        if root.text != "" : Text {
+            text: root.text;
+            color: root.text-color;
+            font-size: root.font-size;
+            font-weight: root.font-weight;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// Metro Interactive Live Tile
+component MetroTile inherits Rectangle {
+    in-out property <string> title: "";
+    in-out property <string> count-text: "";
+    in-out property <image> icon-src;
+    in-out property <bool> has-icon: false;
+    in-out property <bool> is-active: false;
+    in-out property <color> base-bg: #e2d5c3;
+    in-out property <color> hover-bg: #d5c6b0;
+    in-out property <color> active-border-col: #7a434d;
+    in-out property <color> text-col: #2c2523;
+    callback clicked();
+
+    background: touch.pressed ? root.base-bg.darker(10%) : (touch.has-hover ? root.hover-bg : root.base-bg);
+    border-radius: 2px;
+    border-width: root.is-active ? 2px : 1px;
+    border-color: root.is-active ? root.active-border-col : #00000014;
+    animate background { duration: 100ms; }
+    animate border-color { duration: 100ms; }
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+        mouse-cursor: pointer;
+    }
+
+    VerticalLayout {
+        padding-top: 8px;
+        padding-bottom: 8px;
+        padding-left: 10px;
+        padding-right: 10px;
+        alignment: space-between;
+
+        HorizontalLayout {
+            alignment: space-between;
+
+            if root.has-icon : Image {
+                source: root.icon-src;
+                width: 17px;
+                height: 17px;
+                image-fit: contain;
+                colorize: root.text-col;
+            }
+
+            if !root.has-icon : Rectangle { width: 1px; }
+
+            if root.count-text != "" : Text {
+                text: root.count-text;
+                color: root.text-col;
+                font-size: 22px;
+                font-weight: 300;
+                vertical-alignment: top;
+            }
+        }
+
+        Text {
+            text: root.title;
+            color: root.text-col;
+            font-size: 11px;
+            font-weight: 600;
+            overflow: elide;
+        }
+    }
+}
+
+// Flat Metro Tag Chip
+component MetroTagChip inherits Rectangle {
+    in-out property <string> text: "";
+    in-out property <color> text-color: #2f5d8a;
+    in-out property <color> base-bg: #2f5d8a14;
+    in-out property <color> border-col: #2f5d8a33;
+    in-out property <bool> removable: false;
+    callback remove();
+
+    background: root.base-bg;
+    border-radius: 2px;
+    border-width: 1px;
+    border-color: root.border-col;
+    height: 22px;
+
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 6px;
+        alignment: center;
+
+        Text {
+            text: root.text;
+            color: root.text-color;
+            font-size: 11px;
+            font-weight: 500;
+            vertical-alignment: center;
+        }
+
+        if root.removable : Rectangle {
+            width: 14px;
+            height: 14px;
+            border-radius: 7px;
+            background: rem-touch.has-hover ? #a83232 : #00000018;
+            animate background { duration: 100ms; }
+            y: (parent.height - self.height) / 2;
+
+            Image {
+                source: @image-url("icons/win-close.svg");
+                width: 7px;
+                height: 7px;
+                colorize: rem-touch.has-hover ? #ffffff : root.text-color;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+
+            rem-touch := TouchArea {
+                clicked => { root.remove(); }
+                mouse-cursor: pointer;
+            }
+        }
+    }
+}
+
+// Metro App Bar Action Button (Circular Outline Windows 8 Modern Button)
+component MetroAppBarButton inherits Rectangle {
+    in-out property <string> label: "";
+    in-out property <image> icon-src;
+    in-out property <color> icon-color: #2c2523;
+    in-out property <color> circle-border: #756760;
+    in-out property <color> hover-bg: #7a434d;
+    in-out property <color> hover-icon-color: #fbf5ea;
+    in-out property <bool> is-active: false;
+    callback clicked();
+
+    width: 48px;
+    height: 52px;
+    background: #00000000;
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+        mouse-cursor: pointer;
+    }
+
+    VerticalLayout {
+        alignment: center;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        spacing: 3px;
+
+        // Circular outlined button with hover inversion
+        Rectangle {
+            width: 28px;
+            height: 28px;
+            border-radius: 14px;
+            border-width: 1.5px;
+            border-color: (root.is-active || touch.has-hover) ? root.hover-bg : root.circle-border;
+            background: (root.is-active || touch.has-hover) ? root.hover-bg : #00000000;
+            animate background { duration: 100ms; }
+            animate border-color { duration: 100ms; }
+            x: (parent.width - self.width) / 2;
+
+            Image {
+                source: root.icon-src;
+                width: 13px;
+                height: 13px;
+                image-fit: contain;
+                colorize: (root.is-active || touch.has-hover) ? root.hover-icon-color : root.icon-color;
+                animate colorize { duration: 100ms; }
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+
+        if root.label != "" : Text {
+            text: root.label;
+            color: root.icon-color;
+            font-size: 9px;
+            font-weight: 500;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+// Metro Star Select Option
+component TreeSelectOption inherits Rectangle {
+    in-out property <bool> is-selected: false;
+    in-out property <string> star-text: "";
+    in-out property <string> label-text: "";
+    in-out property <color> star-color: #b87b1e;
+    in-out property <ThemeColors> theme;
+    callback clicked();
+
+    height: 28px;
+    border-radius: 2px;
+    background: opt-touch.has-hover ? root.theme.surface0 : #00000000;
+    animate background { duration: 80ms; }
+
+    opt-touch := TouchArea {
+        clicked => { root.clicked(); }
+        mouse-cursor: pointer;
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+        alignment: start;
+
+        // Metro square checkbox
+        Rectangle {
+            width: 14px;
+            height: 14px;
+            border-radius: 1px;
+            background: root.is-selected ? root.star-color : #00000000;
+            border-width: 1px;
+            border-color: root.is-selected ? root.star-color : root.theme.surface2;
+            y: (parent.height - self.height) / 2;
+
+            if root.is-selected : Image {
+                source: @image-url("icons/check.svg");
+                width: 10px;
+                height: 10px;
+                colorize: #ffffff;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+
+        Text {
+            text: root.star-text;
+            color: root.star-color;
+            font-size: 11px;
+            font-weight: 700;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: root.label-text;
+            color: root.theme.text;
+            font-size: 11px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+}
+
+// =========================================================================
+// Main Desktop Window (Modern 3-Pane Architecture with Metro Pivot & Tiles)
+// =========================================================================
+
+export component AppWindow inherits Window {
+    title: root.strings.app_title;
+    icon: @image-url("../assets/icon_256.png");
+    min-width: 900px;
+    min-height: 560px;
+    preferred-width: 1360px;
+    preferred-height: 860px;
+    background: root.theme.base;
+    default-font-family: "'Segoe UI Variable Display', 'Segoe UI', 'Microsoft YaHei', sans-serif";
+
+    // Dynamic Frameless Configuration (true for Windows clean Metro style, false for macOS)
+    in-out property <bool> window-no-frame: true;
+    no-frame: root.window-no-frame;
+
+    // Scholarly Warm Theme Palette (Parchment default)
+    in-out property <ThemeColors> theme: {
+        rosewater: #b8685e,
+        flamingo: #9e4e42,
+        pink: #8f4258,
+        mauve: #7a434d,
+        red: #a83232,
+        maroon: #943838,
+        peach: #b55a30,
+        yellow: #b87b1e,
+        green: #3e6b36,
+        teal: #2d6d66,
+        sky: #387d99,
+        sapphire: #286b7b,
+        blue: #2f5d8a,
+        lavender: #65527a,
+        text: #2c2523,
+        subtext1: #453c37,
+        subtext0: #5a4e47,
+        overlay2: #756760,
+        overlay1: #8f8078,
+        overlay0: #a89a92,
+        surface2: #c3b299,
+        surface1: #d5c6b0,
+        surface0: #e2d5c3,
+        base: #fbf5ea,
+        mantle: #f4ece1,
+        crust: #ebe1d3,
+        discard_bg: #6b585022,
+        discard_fg: #3e2e28,
+        reset_bg: #e2d5c366,
+        reset_hover_bg: #e2d5c3,
+        reset_border: #c3b299,
+        reset_fg: #453c37
+    };
+
+    // UI Localization strings
+    in-out property <I18nStrings> strings: {
+        app_title: "lx Index - 文献管理",
+        perspectives_header: "文献状态",
+        all_items: "全部文献",
+        unread: "未读",
+        high_priority: "高优先级",
+        discarded: "已废弃",
+        pending_ingestion: "待入库文献",
+        fields_header: "研究领域",
+        no_fields: "未检测到研究领域",
+        projects_header: "关联项目",
+        no_projects: "暂无关联项目",
+        tags_header: "标签列表",
+        search_placeholder: "搜索标题、作者、领域、标签...",
+        reset_filters: "重置筛选",
+        ingestion_banner: "篇未入库 PDF 位于文献库中",
+        import_all: "批量入库",
+        import_note: "新建笔记",
+        create_note: "新建伴生笔记",
+        uncatalogued_prompt_title: "未入库 PDF",
+        uncatalogued_prompt_desc: "创建伴生 Markdown 笔记以持久化文献标签与元数据",
+        empty_title: "未检索到匹配文献",
+        empty_desc: "请尝试调整搜索关键词或侧栏筛选条件",
+        status_unread: "未读",
+        status_skimmed: "AI 速读",
+        status_deep: "精读",
+        status_discarded: "已废弃",
+        reading_status_header: "阅读状态",
+        importance_rating_header: "重要度评级",
+        unrated: "未评级",
+        stars_unit: "星级",
+        field_header: "研究领域",
+        summary_header: "文献附录与速览备忘",
+        star_all: "全部星级",
+        star_unrated: "0★ 未评级",
+        star_filter_button: "星级筛选",
+        star_filter_all: "全选",
+        star_filter_clear: "清空",
+        star_5_desc: "★5 顶级核心",
+        star_4_desc: "★4 重点文献",
+        star_3_desc: "★3 值得一阅",
+        star_2_desc: "★2 已废弃",
+        star_1_desc: "★1 待清理",
+        star_0_desc: "0★ 未评级",
+        system_actions_header: "系统操作",
+        reveal_pdf: "本地定位 PDF",
+        no_pdf: "未找到对应 PDF",
+        reveal_note: "本地定位笔记",
+        note_stub: "无伴生笔记",
+        copy_bibtex: "复制 BibTeX 引用",
+        copy_citekey: "复制 Citekey",
+        move_to_trash: "移至系统回收站",
+        settings_title: "文献库与系统设置",
+        vaults_tab: "文献库管理",
+        theme_tab: "配色方案",
+        language_tab: "界面语言",
+        add_vault: "+ 添加本地文件夹为文献库",
+        unmanage_vault: "移除管理",
+        rename_vault: "重命名",
+        save_rename: "保存",
+        cancel: "取消",
+        active_vault: "当前使用中",
+        switch_vault: "切换到此库",
+        unmanage_hint: "注：移除仅从 lx Index 取消管理，绝不会删除本地磁盘上的任何文献文件。",
+        close: "完成",
+        theme_parchment_title: "羊皮古雅 · Parchment Warm (默认推荐)",
+        theme_parchment_desc: "温润微黄羊皮纸底色，深邃典雅古墨字体，尽显藏书楼古籍书香。",
+        theme_rose_pine_title: "暮光晨曦 · Rosé Pine Dawn",
+        theme_rose_pine_desc: "经典暮光柔和色系，优雅微醺紫调与暖白纸底，静谧舒适。",
+        theme_solarized_title: "经典学术 · Solarized Light",
+        theme_solarized_desc: "经典学术米黄基调，精准对比度与护眼色彩配方，专注文献研读。",
+        theme_ivory_title: "象牙古籍 · Antique Ivory",
+        theme_ivory_desc: "细腻温和象牙质感，深棕胡桃木字体，还原传统图书馆阅览体验。",
+        theme_latte_title: "清雅现代 · Catppuccin Latte",
+        theme_latte_desc: "清新明朗的现代浅色调，温和柔美的低饱和色彩，清爽利落。",
+        about_tab: "关于软件",
+        about_tagline: "文献管理与伴生工作空间",
+        about_desc: "基于 Rust 与 Slint 原生构建的高性能文献管理器。零 Web 运行时、零私有数据库锁定，以无损本地 Markdown 与古雅排版，让每一次学术研读回归专注与宁静。",
+        about_tech_stack: "架构设计：Lucentia · 渲染引擎：Skia / Direct3D · 数据协议：Lossless YAML Frontmatter",
+        about_copyright: "© 2026 Lucentia. All rights reserved."
+    };
+
+    in-out property <string> current-theme-id: "parchment";
+    in-out property <string> current-language: "zh";
+    in-out property <string> brand-script-font: "Segoe Script";
+    in-out property <string> brand-serif-font: "Georgia";
+
+    // Vaults & Settings Modal State
+    in-out property <bool> show-settings: false;
+    in-out property <int> settings-tab: 0; // 0: Vaults, 1: Theme, 2: Language, 3: About
+    in-out property <[SlintVaultItem]> registered-vaults: [];
+    in-out property <string> editing-vault-path: "";
+    in-out property <string> editing-vault-name: "";
+
+    // Current Vault properties
+    in-out property <string> vault-name: "在左下角选择或添加文献库";
+    in-out property <string> vault-path: "";
+    in-out property <int> total-count: 0;
+
+    // Filter properties
+    in-out property <string> active-perspective: "all";
+    in-out property <string> active-field: "";
+    in-out property <string> active-project: "";
+    in-out property <bool> filter-star-5: false;
+    in-out property <bool> filter-star-4: false;
+    in-out property <bool> filter-star-3: false;
+    in-out property <bool> filter-star-2: false;
+    in-out property <bool> filter-star-1: false;
+    in-out property <bool> filter-star-0: false;
+    in-out property <int> filter-stars-count: 0;
+    in-out property <string> filter-stars-summary: "";
+    in-out property <bool> star-filter-open: false;
+
+    in-out property <int> count-all: 0;
+    in-out property <int> count-unread: 0;
+    in-out property <int> count-priority: 0;
+    in-out property <int> count-discarded: 0;
+    in-out property <int> count-uncatalogued: 0;
+
+    in-out property <[SlintCategoryItem]> field-categories: [];
+    in-out property <[SlintCategoryItem]> project-categories: [];
+
+    in-out property <string> search-query: "";
+    in-out property <bool> search-expanded: false;
+    in-out property <int> left-pivot-section: 0; // 0: Perspectives, 1: Disciplines, 2: Projects
+    in-out property <bool> filter-active: root.search-query != "" || root.filter-stars-count > 0 || root.active-field != "" || root.active-project != "" || root.active-perspective != "all";
+    in-out property <[SlintPaperItem]> items: [];
+    in-out property <int> selected-index: -1;
+    in-out property <string> status-bar-text: "就绪";
+
+    // Inspector properties
+    in-out property <bool> has-selection: false;
+    in-out property <string> inspector-id: "";
+    in-out property <string> inspector-basename: "";
+    in-out property <string> inspector-title: "";
+    in-out property <string> inspector-summary: "";
+    in-out property <string> inspector-citekey: "";
+    in-out property <string> inspector-authors: "";
+    in-out property <int> inspector-year: 0;
+    in-out property <string> inspector-field: "";
+    in-out property <string> inspector-doi: "";
+    in-out property <int> inspector-status: 0;
+    in-out property <int> inspector-importance: 0;
+    in-out property <[string]> inspector-projects: [];
+    in-out property <[string]> inspector-tags: [];
+    in-out property <bool> inspector-has-pdf: false;
+    in-out property <bool> inspector-has-note: false;
+    in-out property <bool> inspector-missing-pdf: false;
+
+    in-out property <string> new-project-input: "";
+    in-out property <string> new-tag-input: "";
+
+    // Window Control Callbacks (Frameless Metro Window)
+    callback window-drag();
+    callback window-minimize();
+    callback window-toggle-maximize();
+    callback window-close();
+
+    // Callbacks bound to Rust
+    callback search-query-changed(string);
+    callback select-perspective(string);
+    callback select-field(string);
+    callback select-project(string);
+    callback toggle-filter-star(int);
+    callback clear-filter-stars();
+    callback select-all-filter-stars();
+    callback clear-filters();
+    callback select-item(int);
+    callback choose-vault();
+    callback refresh-vault();
+
+    // Ingestion Callbacks
+    callback import-all-uncatalogued();
+    callback import-selected();
+    callback import-item(int);
+
+    // Inspector Mutation Callbacks
+    callback update-status(int);
+    callback update-importance(int);
+    callback update-summary(string);
+    callback add-project(string);
+    callback remove-project(int);
+    callback add-tag(string);
+    callback remove-tag(int);
+
+    // OS Action Callbacks
+    callback reveal-pdf();
+    callback reveal-note();
+    callback copy-bibtex();
+    callback copy-citekey();
+    callback delete-paper();
+
+    // Settings & Vault Management Callbacks
+    callback open-settings();
+    callback open-settings-tab(int);
+    callback close-settings();
+    callback set-settings-tab(int);
+    callback switch-theme(string);
+    callback switch-language(string);
+    callback add-vault-dialog();
+    callback remove-vault(string);
+    callback switch-vault(string);
+    callback save-rename-vault(string, string);
+
+    // =========================================================================
+    // =========================================================================
+    // Main UI Layout: 3 Continuous Vertical Columns (Left - Middle - Right)
+    // =========================================================================
+
+    HorizontalLayout {
+        vertical-stretch: 1;
+        padding: 0px;
+        spacing: 0px;
+
+        // =====================================================================
+        // PANE 1: LEFT SIDEBAR (VERTICAL PANORAMA & PIVOT + METRO TILES)
+        // =====================================================================
+        Rectangle {
+            min-width: 240px;
+            preferred-width: 270px;
+            max-width: 320px;
+            background: root.theme.mantle;
+
+            TouchArea {
+                clicked => {
+                    root.star-filter-open = false;
+                    if root.search-query == "" { root.search-expanded = false; }
+                }
+            }
+
+            VerticalLayout {
+                padding: 0px;
+                spacing: 0px;
+
+                // Column 1 Top Header (Frameless Window Brand & Drag Handle)
+                if root.window-no-frame : Rectangle {
+                    height: 42px;
+                    background: #00000000;
+
+                    TouchArea {
+                        moved => { root.window-drag(); }
+                        double-clicked => { root.window-toggle-maximize(); }
+                    }
+
+                    HorizontalLayout {
+                        padding-left: 16px;
+                        padding-right: 12px;
+                        spacing: 6px;
+                        alignment: start;
+
+                        Text {
+                            text: "lx";
+                            font-family: root.brand-script-font;
+                            font-size: 26px;
+                            color: root.theme.accent;
+                            vertical-alignment: center;
+                        }
+
+                        Text {
+                            text: "Index";
+                            font-family: root.brand-serif-font;
+                            font-size: 26px;
+                            font-weight: 700;
+                            color: root.theme.text;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+
+                // Scrollable vertical content
+                VerticalLayout {
+                    vertical-stretch: 1;
+                    padding-left: 14px;
+                    padding-right: 14px;
+                    padding-top: 10px;
+                    padding-bottom: 8px;
+                    spacing: 16px;
+
+                    // ---------------------------------------------------------
+                    // Block 1: PERSPECTIVES (Vertical Pivot + Metro Tiles)
+                    // ---------------------------------------------------------
+                    VerticalLayout {
+                        spacing: 8px;
+
+                        Rectangle {
+                            height: 28px;
+                            background: #00000000;
+                            TouchArea {
+                                clicked => { root.left-pivot-section = 0; }
+                                mouse-cursor: pointer;
+                            }
+                            Text {
+                                text: root.current-language == "zh" ? "文献状态" : "STATUS";
+                                font-size: root.left-pivot-section == 0 ? 20px : 16px;
+                                font-weight: root.left-pivot-section == 0 ? 700 : 500;
+                                color: root.left-pivot-section == 0 ? root.theme.accent : root.theme.subtext0;
+                                vertical-alignment: center;
+                                horizontal-alignment: left;
+                                x: 0px;
+                            }
+                        }
+
+                        VerticalLayout {
+                            spacing: 6px;
+
+                            // Tile: All Items
+                            MetroTile {
+                                title: root.strings.all_items;
+                                count-text: root.count-all;
+                                has-icon: true;
+                                icon-src: @image-url("icons/book.svg");
+                                is-active: root.active-perspective == "all" && root.active-field == "" && root.active-project == "";
+                                base-bg: root.theme.surface0;
+                                hover-bg: root.theme.surface1;
+                                active-border-col: root.theme.accent;
+                                text-col: root.theme.text;
+                                height: 56px;
+                                clicked => {
+                                    root.left-pivot-section = 0;
+                                    root.select-perspective("all");
+                                }
+                            }
+
+                            // 2-Column: Unread & High Priority
+                            HorizontalLayout {
+                                spacing: 6px;
+
+                                MetroTile {
+                                    title: root.strings.unread;
+                                    count-text: root.count-unread;
+                                    has-icon: true;
+                                    icon-src: @image-url("icons/tray.svg");
+                                    is-active: root.active-perspective == "unread";
+                                    base-bg: root.theme.teal.transparentize(88%);
+                                    hover-bg: root.theme.teal.transparentize(78%);
+                                    active-border-col: root.theme.teal;
+                                    text-col: root.theme.teal;
+                                    height: 64px;
+                                    horizontal-stretch: 1;
+                                    clicked => {
+                                        root.left-pivot-section = 0;
+                                        root.select-perspective(root.active-perspective == "unread" ? "all" : "unread");
+                                    }
+                                }
+
+                                MetroTile {
+                                    title: root.strings.high_priority;
+                                    count-text: root.count-priority;
+                                    has-icon: true;
+                                    icon-src: @image-url("icons/star-fill.svg");
+                                    is-active: root.active-perspective == "priority";
+                                    base-bg: root.theme.yellow.transparentize(85%);
+                                    hover-bg: root.theme.yellow.transparentize(75%);
+                                    active-border-col: root.theme.yellow;
+                                    text-col: root.theme.yellow;
+                                    height: 64px;
+                                    horizontal-stretch: 1;
+                                    clicked => {
+                                        root.left-pivot-section = 0;
+                                        root.select-perspective(root.active-perspective == "priority" ? "all" : "priority");
+                                    }
+                                }
+                            }
+
+                            // 2-Column: Discarded & Pending Ingestion
+                            HorizontalLayout {
+                                spacing: 6px;
+
+                                MetroTile {
+                                    title: root.strings.discarded;
+                                    count-text: root.count-discarded;
+                                    has-icon: true;
+                                    icon-src: @image-url("icons/trash.svg");
+                                    is-active: root.active-perspective == "discarded";
+                                    base-bg: root.theme.discard_bg;
+                                    hover-bg: root.theme.surface0;
+                                    active-border-col: root.theme.overlay1;
+                                    text-col: root.theme.discard_fg;
+                                    height: 64px;
+                                    horizontal-stretch: 1;
+                                    clicked => {
+                                        root.left-pivot-section = 0;
+                                        root.select-perspective(root.active-perspective == "discarded" ? "all" : "discarded");
+                                    }
+                                }
+
+                                MetroTile {
+                                    title: root.strings.pending_ingestion;
+                                    count-text: root.count-uncatalogued;
+                                    has-icon: true;
+                                    icon-src: @image-url("icons/bolt.svg");
+                                    is-active: root.active-perspective == "uncatalogued";
+                                    base-bg: root.count-uncatalogued > 0 ? root.theme.peach.transparentize(82%) : root.theme.surface0;
+                                    hover-bg: root.count-uncatalogued > 0 ? root.theme.peach.transparentize(70%) : root.theme.surface1;
+                                    active-border-col: root.theme.peach;
+                                    text-col: root.count-uncatalogued > 0 ? root.theme.peach : root.theme.subtext0;
+                                    height: 64px;
+                                    horizontal-stretch: 1;
+                                    clicked => {
+                                        root.left-pivot-section = 0;
+                                        root.select-perspective(root.active-perspective == "uncatalogued" ? "all" : "uncatalogued");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ---------------------------------------------------------
+                    // Block 2: DISCIPLINES / FIELDS (Vertical Pivot)
+                    // ---------------------------------------------------------
+                    VerticalLayout {
+                        spacing: 6px;
+
+                        Rectangle {
+                            height: 28px;
+                            background: #00000000;
+                            TouchArea {
+                                clicked => { root.left-pivot-section = 1; }
+                                mouse-cursor: pointer;
+                            }
+                            Text {
+                                text: root.current-language == "zh" ? "研究领域" : "DOMAINS";
+                                font-size: root.left-pivot-section == 1 ? 20px : 16px;
+                                font-weight: root.left-pivot-section == 1 ? 700 : 500;
+                                color: root.left-pivot-section == 1 ? root.theme.accent : root.theme.subtext0;
+                                vertical-alignment: center;
+                                horizontal-alignment: left;
+                                x: 0px;
+                            }
+                        }
+
+                        if root.field-categories.length == 0 : Text {
+                            text: root.strings.no_fields;
+                            color: root.theme.overlay0;
+                            font-size: 11px;
+                            font-italic: true;
+                        }
+
+                        for field in root.field-categories : Rectangle {
+                            height: 28px;
+                            background: root.active-field == field.name ? root.theme.accent.transparentize(85%) : (f-touch.has-hover ? root.theme.surface0 : #00000000);
+                            border-radius: 2px;
+                            animate background { duration: 60ms; }
+
+                            f-touch := TouchArea {
+                                clicked => {
+                                    root.left-pivot-section = 1;
+                                    root.select-field(field.name);
+                                }
+                                mouse-cursor: pointer;
+                            }
+
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 8px;
+                                spacing: 6px;
+                                alignment: space-between;
+
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    alignment: start;
+
+                                    // Metro indicator bar for active item
+                                    if root.active-field == field.name : Rectangle {
+                                        width: 3px;
+                                        height: 14px;
+                                        background: root.theme.accent;
+                                        y: (parent.height - self.height) / 2;
+                                    }
+
+                                    Text {
+                                        text: field.name;
+                                        color: root.active-field == field.name ? root.theme.accent : root.theme.text;
+                                        font-size: 12px;
+                                        font-weight: root.active-field == field.name ? 700 : 400;
+                                        vertical-alignment: center;
+                                        overflow: elide;
+                                        max-width: 180px;
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 16px;
+                                    background: root.active-field == field.name ? root.theme.accent.transparentize(70%) : root.theme.surface2.transparentize(60%);
+                                    border-radius: 1px;
+                                    y: (parent.height - self.height) / 2;
+                                    HorizontalLayout {
+                                        padding-left: 5px;
+                                        padding-right: 5px;
+                                        Text {
+                                            text: field.count;
+                                            color: root.active-field == field.name ? root.theme.accent : root.theme.subtext1;
+                                            font-size: 10px;
+                                            font-weight: 700;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ---------------------------------------------------------
+                    // Block 3: PROJECTS (Vertical Pivot)
+                    // ---------------------------------------------------------
+                    VerticalLayout {
+                        spacing: 6px;
+
+                        Rectangle {
+                            height: 28px;
+                            background: #00000000;
+                            TouchArea {
+                                clicked => { root.left-pivot-section = 2; }
+                                mouse-cursor: pointer;
+                            }
+                            Text {
+                                text: root.current-language == "zh" ? "关联项目" : "PROJECTS";
+                                font-size: root.left-pivot-section == 2 ? 20px : 16px;
+                                font-weight: root.left-pivot-section == 2 ? 700 : 500;
+                                color: root.left-pivot-section == 2 ? root.theme.accent : root.theme.subtext0;
+                                vertical-alignment: center;
+                                horizontal-alignment: left;
+                                x: 0px;
+                            }
+                        }
+
+                        if root.project-categories.length == 0 : Text {
+                            text: root.strings.no_projects;
+                            color: root.theme.overlay0;
+                            font-size: 11px;
+                            font-italic: true;
+                        }
+
+                        for proj in root.project-categories : Rectangle {
+                            height: 28px;
+                            background: root.active-project == proj.name ? root.theme.accent_secondary.transparentize(85%) : (p-touch.has-hover ? root.theme.surface0 : #00000000);
+                            border-radius: 2px;
+                            animate background { duration: 60ms; }
+
+                            p-touch := TouchArea {
+                                clicked => {
+                                    root.left-pivot-section = 2;
+                                    root.select-project(proj.name);
+                                }
+                                mouse-cursor: pointer;
+                            }
+
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 8px;
+                                spacing: 6px;
+                                alignment: space-between;
+
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    alignment: start;
+
+                                    if root.active-project == proj.name : Rectangle {
+                                        width: 3px;
+                                        height: 14px;
+                                        background: root.theme.accent_secondary;
+                                        y: (parent.height - self.height) / 2;
+                                    }
+
+                                    Text {
+                                        text: proj.name;
+                                        color: root.active-project == proj.name ? root.theme.accent_secondary : root.theme.text;
+                                        font-size: 12px;
+                                        font-weight: root.active-project == proj.name ? 700 : 400;
+                                        vertical-alignment: center;
+                                        overflow: elide;
+                                        max-width: 180px;
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 16px;
+                                    background: root.active-project == proj.name ? root.theme.accent_secondary.transparentize(70%) : root.theme.surface2.transparentize(60%);
+                                    border-radius: 1px;
+                                    y: (parent.height - self.height) / 2;
+                                    HorizontalLayout {
+                                        padding-left: 5px;
+                                        padding-right: 5px;
+                                        Text {
+                                            text: proj.count;
+                                            color: root.active-project == proj.name ? root.theme.accent_secondary : root.theme.subtext1;
+                                            font-size: 10px;
+                                            font-weight: 700;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Stretcher
+                    Rectangle { vertical-stretch: 1; }
+                }
+
+                // -------------------------------------------------------------
+                // Left Sidebar Bottom: METRO APP BAR
+                // -------------------------------------------------------------
+                Rectangle {
+                    height: 52px;
+                    background: root.theme.mantle;
+
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 4px;
+                        alignment: space-around;
+
+                        // 1. Vault Switcher App Bar Button
+                        MetroAppBarButton {
+                            label: root.current-language == "zh" ? "文献库" : "Vault";
+                            icon-src: @image-url("icons/folder.svg");
+                            icon-color: root.theme.text;
+                            circle-border: root.theme.surface2;
+                            hover-bg: root.theme.accent;
+                            hover-icon-color: root.theme.base;
+                            clicked => {
+                                root.open-settings-tab(0);
+                            }
+                        }
+
+                        // 2. Refresh App Bar Button
+                        MetroAppBarButton {
+                            label: root.current-language == "zh" ? "同步" : "Sync";
+                            icon-src: @image-url("icons/arrow-path.svg");
+                            icon-color: root.theme.text;
+                            circle-border: root.theme.surface2;
+                            hover-bg: root.theme.accent;
+                            hover-icon-color: root.theme.base;
+                            clicked => {
+                                root.refresh-vault();
+                            }
+                        }
+
+                        // 3. Settings App Bar Button
+                        MetroAppBarButton {
+                            label: root.current-language == "zh" ? "设置" : "Settings";
+                            icon-src: @image-url("icons/gear.svg");
+                            icon-color: root.theme.text;
+                            circle-border: root.theme.surface2;
+                            hover-bg: root.theme.accent;
+                            hover-icon-color: root.theme.base;
+                            clicked => {
+                                root.open-settings();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+            // =================================================================
+            // PANE 2: MIDDLE MAIN LITERATURE STREAM (SEARCH & LIST)
+            // =================================================================
+            Rectangle {
+                min-width: 360px;
+                horizontal-stretch: 1;
+                background: root.theme.base;
+
+                VerticalLayout {
+                    padding: 0px;
+                    spacing: 0px;
+
+                    // Column 2 Top Header (Vault Breadcrumb & Drag Handle)
+                    if root.window-no-frame : Rectangle {
+                        height: 42px;
+                        background: #00000000;
+
+                        TouchArea {
+                            moved => { root.window-drag(); }
+                            double-clicked => { root.window-toggle-maximize(); }
+                        }
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            alignment: start;
+
+                            Text {
+                                text: "\\ " + root.vault-name;
+                                color: root.theme.subtext0;
+                                font-size: 13px;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
+                        }
+                    }
+
+                    // Ingestion Prompt Strip (If uncatalogued PDFs exist)
+                    if root.count-uncatalogued > 0 : Rectangle {
+                        background: root.theme.peach.transparentize(85%);
+                        height: 40px;
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            alignment: space-between;
+
+                            HorizontalLayout {
+                                spacing: 8px;
+                                alignment: start;
+
+                                Image {
+                                    source: @image-url("icons/bolt.svg");
+                                    width: 14px;
+                                    height: 14px;
+                                    colorize: root.theme.peach;
+                                    y: (parent.height - self.height) / 2;
+                                }
+
+                                Text {
+                                    text: root.count-uncatalogued + " " + root.strings.ingestion_banner;
+                                    color: root.theme.peach;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            MetroButton {
+                                text: root.strings.import_all;
+                                text-color: #ffffff;
+                                base-bg: root.theme.peach;
+                                hover-bg: root.theme.peach.darker(10%);
+                                active-bg: root.theme.peach.darker(20%);
+                                font-size: 11px;
+                                height: 26px;
+                                y: (parent.height - self.height) / 2;
+                                clicked => {
+                                    root.import-all-uncatalogued();
+                                }
+                            }
+                        }
+                    }
+
+                    if root.count-uncatalogued > 0 : Rectangle {
+                        height: 1px;
+                        background: root.theme.peach.transparentize(50%);
+                    }
+
+                    // Literature Cards List View
+                    if root.items.length == 0 : Rectangle {
+                        vertical-stretch: 1;
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: 8px;
+
+                            Text {
+                                text: root.strings.empty_title;
+                                color: root.theme.subtext1;
+                                font-size: 16px;
+                                font-weight: 600;
+                                horizontal-alignment: center;
+                            }
+
+                            Text {
+                                text: root.strings.empty_desc;
+                                color: root.theme.overlay1;
+                                font-size: 12px;
+                                horizontal-alignment: center;
+                            }
+                        }
+                    }
+
+                    if root.items.length > 0 : ListView {
+                        vertical-stretch: 1;
+
+                        for item[idx] in root.items : Rectangle {
+                            height: 104px;
+                            background: root.selected-index == idx ? root.theme.accent.transparentize(90%) : (card-touch.has-hover ? root.theme.surface0.transparentize(50%) : root.theme.base);
+                            animate background { duration: 80ms; }
+
+                            card-touch := TouchArea {
+                                clicked => {
+                                    root.star-filter-open = false;
+                                    if root.search-query == "" {
+                                        root.search-expanded = false;
+                                    }
+                                    root.select-item(root.selected-index == idx ? -1 : idx);
+                                }
+                                mouse-cursor: pointer;
+                            }
+
+                            VerticalLayout {
+                                padding: 0px;
+                                spacing: 0px;
+
+                                HorizontalLayout {
+                                    vertical-stretch: 1;
+                                    padding: 0px;
+                                    spacing: 0px;
+
+                                    // Left Metro Indicator Bar (Color-coded by Star / Status, visible only when selected)
+                                    Rectangle {
+                                        width: root.selected-index == idx ? 3px : 0px;
+                                        background: item.importance == 5 ? root.theme.yellow : (item.importance == 4 ? root.theme.peach : (item.status_code == 3 ? root.theme.overlay1 : (item.importance == 1 ? root.theme.red : root.theme.accent)));
+                                    }
+
+                                    // Card Body
+                                    VerticalLayout {
+                                        padding-left: 14px;
+                                        padding-right: 14px;
+                                        padding-top: 10px;
+                                        padding-bottom: 10px;
+                                        spacing: 4px;
+                                        alignment: space-between;
+
+                                        // Card Top Header: Title & Year
+                                        HorizontalLayout {
+                                            spacing: 8px;
+                                            alignment: space-between;
+
+                                            Text {
+                                                text: item.title;
+                                                color: root.theme.text;
+                                                font-size: 13px;
+                                                font-weight: 600;
+                                                overflow: elide;
+                                                horizontal-stretch: 1;
+                                            }
+
+                                            Text {
+                                                text: item.year > 0 ? item.year : "";
+                                                color: root.theme.overlay1;
+                                                font-size: 11px;
+                                                font-weight: 600;
+                                            }
+                                        }
+
+                                        // Authors
+                                        Text {
+                                            text: item.authors;
+                                            color: root.theme.subtext1;
+                                            font-size: 11px;
+                                            overflow: elide;
+                                        }
+
+                                        // Summary block (if any)
+                                        if item.summary != "" : Text {
+                                            text: "\"" + item.summary + "\"";
+                                            color: root.theme.overlay2;
+                                            font-size: 10px;
+                                            font-italic: true;
+                                            overflow: elide;
+                                        }
+
+                                        // Card Bottom Row: Stars, Field Badge, Tags & Ingestion Action
+                                        HorizontalLayout {
+                                            spacing: 6px;
+                                            alignment: space-between;
+
+                                            HorizontalLayout {
+                                                spacing: 6px;
+                                                alignment: start;
+
+                                                // Star Rating Display (Metro Gold Star Pill Badge)
+                                                if item.importance > 0 : Rectangle {
+                                                    height: 18px;
+                                                    background: root.theme.yellow.transparentize(82%);
+                                                    border-radius: 2px;
+                                                    border-width: 1px;
+                                                    border-color: root.theme.yellow.transparentize(40%);
+                                                    y: (parent.height - self.height) / 2;
+
+                                                    HorizontalLayout {
+                                                        padding-left: 5px;
+                                                        padding-right: 6px;
+                                                        spacing: 3px;
+                                                        alignment: center;
+
+                                                        Image {
+                                                            source: @image-url("icons/star-fill.svg");
+                                                            width: 10px;
+                                                            height: 10px;
+                                                            colorize: root.theme.yellow;
+                                                            y: (parent.height - self.height) / 2;
+                                                        }
+
+                                                        Text {
+                                                            text: item.importance;
+                                                            color: root.theme.yellow;
+                                                            font-size: 10px;
+                                                            font-weight: 700;
+                                                            vertical-alignment: center;
+                                                        }
+                                                    }
+                                                }
+
+                                                // Field Chip
+                                                if item.field != "" : MetroTagChip {
+                                                    text: item.field;
+                                                    text-color: root.theme.accent;
+                                                    base-bg: root.theme.accent.transparentize(88%);
+                                                    border-col: root.theme.accent.transparentize(70%);
+                                                }
+
+                                                // Projects display
+                                                if item.projects_display != "" : MetroTagChip {
+                                                    text: item.projects_display;
+                                                    text-color: root.theme.accent_secondary;
+                                                    base-bg: root.theme.accent_secondary.transparentize(88%);
+                                                    border-col: root.theme.accent_secondary.transparentize(70%);
+                                                }
+                                            }
+
+                                            // Uncatalogued Item Stub Creation Action
+                                            if !item.has_note : MetroButton {
+                                                text: root.strings.import_note;
+                                                text-color: #ffffff;
+                                                base-bg: root.theme.peach;
+                                                hover-bg: root.theme.peach.darker(10%);
+                                                active-bg: root.theme.peach.darker(20%);
+                                                font-size: 10px;
+                                                height: 20px;
+                                                clicked => {
+                                                    root.import-item(idx);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Item bottom separator line
+                                Rectangle {
+                                    height: 1px;
+                                    background: root.theme.surface2.transparentize(70%);
+                                }
+                            }
+                        }
+                    }
+
+                    // ---------------------------------------------------------
+                    // Middle Column Bottom: WINDOWS 8 METRO APP BAR
+                    // ---------------------------------------------------------
+                    Rectangle {
+                        height: 52px;
+                        background: root.theme.crust;
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            spacing: 12px;
+                            alignment: space-between;
+
+                            // Left: Status Text (Acts as Status Bar)
+                            HorizontalLayout {
+                                alignment: start;
+                                spacing: 8px;
+
+                                Text {
+                                    text: root.items.length == 0 ? 
+                                        (root.current-language == "zh" ? "无匹配文献" : "No papers found") :
+                                        (root.current-language == "zh" ? "共 " + root.items.length + " 篇文献" : root.items.length + " papers");
+                                    color: root.theme.subtext1;
+                                    font-size: 11px;
+                                    font-weight: 500;
+                                    vertical-alignment: center;
+                                }
+
+                                if root.filter-active : Text {
+                                    text: root.current-language == "zh" ? "(已应用筛选)" : "(Filtered)";
+                                    color: root.theme.accent;
+                                    font-size: 10px;
+                                    font-weight: 600;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            // Right: App Bar Action Buttons
+                            HorizontalLayout {
+                                alignment: end;
+                                spacing: 6px;
+
+                                // Animated Expanding Search Box + Button
+                                HorizontalLayout {
+                                    spacing: 4px;
+                                    alignment: end;
+
+                                    Rectangle {
+                                        width: root.search-expanded ? 180px : 0px;
+                                        clip: true;
+                                        height: 32px;
+                                        background: root.theme.base;
+                                        border-radius: 2px;
+                                        border-width: root.search-expanded ? 1px : 0px;
+                                        border-color: root.theme.surface2;
+                                        y: (parent.height - self.height) / 2;
+                                        animate width { duration: 180ms; easing: ease-out; }
+
+                                        HorizontalLayout {
+                                            padding-left: 8px;
+                                            padding-right: 6px;
+                                            spacing: 4px;
+
+                                            search-in := TextInput {
+                                                text: root.search-query;
+                                                color: root.theme.text;
+                                                font-size: 11px;
+                                                vertical-alignment: center;
+                                                edited => {
+                                                    root.search-query-changed(self.text);
+                                                }
+                                            }
+
+                                            if root.search-query != "" : Rectangle {
+                                                width: 14px;
+                                                height: 14px;
+                                                border-radius: 1px;
+                                                background: #00000010;
+                                                y: (parent.height - self.height) / 2;
+
+                                                Text {
+                                                    text: "×";
+                                                    color: root.theme.subtext1;
+                                                    font-size: 11px;
+                                                    horizontal-alignment: center;
+                                                    vertical-alignment: center;
+                                                }
+
+                                                TouchArea {
+                                                    clicked => {
+                                                        search-in.text = "";
+                                                        root.search-query-changed("");
+                                                    }
+                                                    mouse-cursor: pointer;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    MetroAppBarButton {
+                                        label: root.current-language == "zh" ? "搜索" : "Search";
+                                        icon-src: @image-url("icons/search.svg");
+                                        icon-color: root.theme.text;
+                                        circle-border: root.theme.surface2;
+                                        hover-bg: root.theme.accent;
+                                        hover-icon-color: root.theme.base;
+                                        is-active: root.search-expanded || root.search-query != "";
+                                        clicked => {
+                                            root.search-expanded = !root.search-expanded;
+                                        }
+                                    }
+                                }
+
+                                // Star Filter Button
+                                MetroAppBarButton {
+                                    label: root.filter-stars-count > 0 ? (root.filter-stars-count + " ★") : (root.current-language == "zh" ? "星级" : "Stars");
+                                    icon-src: @image-url("icons/star.svg");
+                                    icon-color: root.filter-stars-count > 0 ? root.theme.yellow : root.theme.text;
+                                    circle-border: root.filter-stars-count > 0 ? root.theme.yellow : root.theme.surface2;
+                                    hover-bg: root.theme.yellow;
+                                    hover-icon-color: #ffffff;
+                                    is-active: root.star-filter-open || root.filter-stars-count > 0;
+                                    clicked => {
+                                        root.star-filter-open = !root.star-filter-open;
+                                    }
+                                }
+
+                                // Reset Filter Button (Visible only when filters active!)
+                                if root.filter-active : MetroAppBarButton {
+                                    label: root.current-language == "zh" ? "重置" : "Reset";
+                                    icon-src: @image-url("icons/arrow-path.svg");
+                                    icon-color: root.theme.reset_fg;
+                                    circle-border: root.theme.reset_border;
+                                    hover-bg: root.theme.accent;
+                                    hover-icon-color: root.theme.base;
+                                    clicked => {
+                                        search-in.text = "";
+                                        root.clear-filters();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Click-outside backdrop to dismiss star filter dropdown & collapse empty search
+                // Constrained to above the App Bar (height: parent.height - 52px) so clicking inside the search box or App Bar is NEVER intercepted!
+                if root.star-filter-open || (root.search-expanded && root.search-query == "") : TouchArea {
+                    x: 0px;
+                    y: 0px;
+                    width: parent.width;
+                    height: parent.height - 52px;
+                    clicked => {
+                        root.star-filter-open = false;
+                        if root.search-query == "" {
+                            root.search-expanded = false;
+                        }
+                    }
+                }
+
+                // Star Multi-Select Dropdown Overlay (Pops up above bottom App Bar)
+                if root.star-filter-open : Rectangle {
+                    width: 210px;
+                    height: 242px;
+                    x: parent.width - self.width - 16px;
+                    y: parent.height - self.height - 56px;
+                    background: root.theme.mantle;
+                    border-radius: 2px;
+                    border-width: 1px;
+                    border-color: root.theme.surface2;
+
+                    VerticalLayout {
+                        padding: 8px;
+                        spacing: 4px;
+
+                        HorizontalLayout {
+                            alignment: space-between;
+                            padding-bottom: 4px;
+
+                            Text {
+                                text: root.strings.star_filter_button;
+                                color: root.theme.subtext1;
+                                font-size: 11px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+
+                            HorizontalLayout {
+                                spacing: 6px;
+                                Text {
+                                    text: root.strings.star_filter_all;
+                                    color: root.theme.accent;
+                                    font-size: 10px;
+                                    vertical-alignment: center;
+                                    TouchArea {
+                                        clicked => { root.select-all-filter-stars(); }
+                                        mouse-cursor: pointer;
+                                    }
+                                }
+                                Text {
+                                    text: root.strings.star_filter_clear;
+                                    color: root.theme.overlay1;
+                                    font-size: 10px;
+                                    vertical-alignment: center;
+                                    TouchArea {
+                                        clicked => { root.clear-filter-stars(); }
+                                        mouse-cursor: pointer;
+                                    }
+                                }
+                            }
+                        }
+
+                        TreeSelectOption {
+                            is-selected: root.filter-star-5;
+                            star-text: "5★";
+                            label-text: root.strings.star_5_desc;
+                            star-color: root.theme.yellow;
+                            theme: root.theme;
+                            clicked => { root.toggle-filter-star(5); }
+                        }
+                        TreeSelectOption {
+                            is-selected: root.filter-star-4;
+                            star-text: "4★";
+                            label-text: root.strings.star_4_desc;
+                            star-color: root.theme.yellow;
+                            theme: root.theme;
+                            clicked => { root.toggle-filter-star(4); }
+                        }
+                        TreeSelectOption {
+                            is-selected: root.filter-star-3;
+                            star-text: "3★";
+                            label-text: root.strings.star_3_desc;
+                            star-color: root.theme.sky;
+                            theme: root.theme;
+                            clicked => { root.toggle-filter-star(3); }
+                        }
+                        TreeSelectOption {
+                            is-selected: root.filter-star-2;
+                            star-text: "2★";
+                            label-text: root.strings.star_2_desc;
+                            star-color: root.theme.overlay1;
+                            theme: root.theme;
+                            clicked => { root.toggle-filter-star(2); }
+                        }
+                        TreeSelectOption {
+                            is-selected: root.filter-star-1;
+                            star-text: "1★";
+                            label-text: root.strings.star_1_desc;
+                            star-color: root.theme.red;
+                            theme: root.theme;
+                            clicked => { root.toggle-filter-star(1); }
+                        }
+                        TreeSelectOption {
+                            is-selected: root.filter-star-0;
+                            star-text: "0★";
+                            label-text: root.strings.star_0_desc;
+                            star-color: root.theme.subtext1;
+                            theme: root.theme;
+                            clicked => { root.toggle-filter-star(0); }
+                        }
+                    }
+                }
+            }
+
+            // =================================================================
+            // PANE 3: RIGHT METADATA & ACTIONS INSPECTOR
+            // =================================================================
+            Rectangle {
+                min-width: 300px;
+                preferred-width: 380px;
+                max-width: 440px;
+                background: root.theme.mantle;
+
+                TouchArea {
+                    clicked => {
+                        root.star-filter-open = false;
+                        if root.search-query == "" { root.search-expanded = false; }
+                    }
+                }
+
+                VerticalLayout {
+                    padding: 0px;
+                    spacing: 0px;
+
+                    // Column 3 Top Header (Window Control Buttons & Drag Handle)
+                    if root.window-no-frame : Rectangle {
+                        height: 42px;
+                        background: #00000000;
+
+                        TouchArea {
+                            moved => { root.window-drag(); }
+                            double-clicked => { root.window-toggle-maximize(); }
+                        }
+
+                        HorizontalLayout {
+                            alignment: end;
+                            spacing: 0px;
+
+                            // Minimize
+                            Rectangle {
+                                width: 46px;
+                                height: 42px;
+                                background: min-btn-touch.has-hover ? root.theme.surface1 : #00000000;
+                                animate background { duration: 80ms; }
+
+                                min-btn-touch := TouchArea {
+                                    clicked => { root.window-minimize(); }
+                                    mouse-cursor: pointer;
+                                }
+
+                                Rectangle {
+                                    width: 10px;
+                                    height: 1.3px;
+                                    background: root.theme.subtext1;
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
+
+                            // Maximize / Restore
+                            Rectangle {
+                                width: 46px;
+                                height: 42px;
+                                background: max-btn-touch.has-hover ? root.theme.surface1 : #00000000;
+                                animate background { duration: 80ms; }
+
+                                max-btn-touch := TouchArea {
+                                    clicked => { root.window-toggle-maximize(); }
+                                    mouse-cursor: pointer;
+                                }
+
+                                Rectangle {
+                                    width: 10px;
+                                    height: 10px;
+                                    border-width: 1.3px;
+                                    border-color: root.theme.subtext1;
+                                    background: #00000000;
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
+
+                            // Close (Windows Metro Red on Hover)
+                            Rectangle {
+                                width: 46px;
+                                height: 42px;
+                                background: close-btn-touch.has-hover ? #e81123 : #00000000;
+                                animate background { duration: 80ms; }
+
+                                close-btn-touch := TouchArea {
+                                    clicked => { root.window-close(); }
+                                    mouse-cursor: pointer;
+                                }
+
+                                Image {
+                                    source: @image-url("icons/win-close.svg");
+                                    width: 10px;
+                                    height: 10px;
+                                    colorize: close-btn-touch.has-hover ? #ffffff : root.theme.subtext1;
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
+                        }
+                    }
+
+                    // Empty Inspector State
+                    if !root.has-selection : VerticalLayout {
+                        vertical-stretch: 1;
+                        alignment: center;
+                        spacing: 14px;
+                        padding: 30px;
+
+                        HorizontalLayout {
+                            alignment: center;
+                            Image {
+                                source: @image-url("icons/doc.svg");
+                                width: 44px;
+                                height: 44px;
+                                image-fit: contain;
+                                colorize: root.theme.overlay0;
+                            }
+                        }
+
+                        Text {
+                            text: root.current-language == "zh" ? "未选中文献" : "No Paper Selected";
+                            color: root.theme.subtext1;
+                            font-size: 16px;
+                            font-weight: 600;
+                            horizontal-alignment: center;
+                        }
+
+                        Text {
+                            text: root.current-language == "zh" ? "请从列表中选择文献以检视元数据并执行操作" : "Select an article to inspect metadata";
+                            color: root.theme.overlay1;
+                            font-size: 12px;
+                            horizontal-alignment: center;
+                            wrap: word-wrap;
+                        }
+                    }
+
+                    // Active Inspector View
+                    if root.has-selection : VerticalLayout {
+                        vertical-stretch: 1;
+                        padding: 18px;
+                        spacing: 12px;
+
+                    // Large Article Title
+                    Text {
+                        text: root.inspector-title;
+                        color: root.theme.text;
+                        font-size: 17px;
+                        font-weight: 600;
+                        wrap: word-wrap;
+                    }
+
+                    // Authors & Year & Field
+                    VerticalLayout {
+                        spacing: 4px;
+
+                        Text {
+                            text: root.inspector-authors;
+                            color: root.theme.subtext1;
+                            font-size: 12px;
+                            font-weight: 500;
+                            wrap: word-wrap;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 10px;
+
+                            if root.inspector-year > 0 : Text {
+                                text: root.current-language == "zh" ? "年份: " + root.inspector-year : "Year: " + root.inspector-year;
+                                color: root.theme.overlay1;
+                                font-size: 11px;
+                            }
+
+                            if root.inspector-field != "" : Text {
+                                text: root.current-language == "zh" ? "领域: " + root.inspector-field : "Field: " + root.inspector-field;
+                                color: root.theme.accent;
+                                font-size: 11px;
+                                font-weight: 600;
+                            }
+                        }
+                    }
+
+                    // Divider
+                    Rectangle {
+                        height: 1px;
+                        background: root.theme.surface2.transparentize(50%);
+                    }
+
+                    // Reading Status Segmented Buttons
+                    VerticalLayout {
+                        spacing: 6px;
+
+                        Text {
+                            text: root.strings.reading_status_header;
+                            color: root.theme.overlay1;
+                            font-size: 10px;
+                            font-weight: 700;
+                            letter-spacing: 0.8px;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 4px;
+
+                            MetroButton {
+                                text: root.strings.status_unread;
+                                text-color: root.inspector-status == 0 ? #ffffff : root.theme.text;
+                                base-bg: root.inspector-status == 0 ? root.theme.teal : root.theme.surface0;
+                                hover-bg: root.theme.teal.transparentize(50%);
+                                active-bg: root.theme.teal;
+                                height: 28px;
+                                horizontal-stretch: 1;
+                                clicked => { root.update-status(0); }
+                            }
+
+                            MetroButton {
+                                text: root.strings.status_skimmed;
+                                text-color: root.inspector-status == 1 ? #ffffff : root.theme.text;
+                                base-bg: root.inspector-status == 1 ? root.theme.accent : root.theme.surface0;
+                                hover-bg: root.theme.accent.transparentize(50%);
+                                active-bg: root.theme.accent;
+                                height: 28px;
+                                horizontal-stretch: 1;
+                                clicked => { root.update-status(1); }
+                            }
+
+                            MetroButton {
+                                text: root.strings.status_deep;
+                                text-color: root.inspector-status == 2 ? #ffffff : root.theme.text;
+                                base-bg: root.inspector-status == 2 ? root.theme.green : root.theme.surface0;
+                                hover-bg: root.theme.green.transparentize(50%);
+                                active-bg: root.theme.green;
+                                height: 28px;
+                                horizontal-stretch: 1;
+                                clicked => { root.update-status(2); }
+                            }
+
+                            MetroButton {
+                                text: root.strings.status_discarded;
+                                text-color: root.inspector-status == 3 ? #ffffff : root.theme.text;
+                                base-bg: root.inspector-status == 3 ? root.theme.maroon : root.theme.surface0;
+                                hover-bg: root.theme.maroon.transparentize(50%);
+                                active-bg: root.theme.maroon;
+                                height: 28px;
+                                horizontal-stretch: 1;
+                                clicked => { root.update-status(3); }
+                            }
+                        }
+                    }
+
+                    // Importance Rating Stars
+                    VerticalLayout {
+                        spacing: 6px;
+
+                        Text {
+                            text: root.strings.importance_rating_header;
+                            color: root.theme.overlay1;
+                            font-size: 10px;
+                            font-weight: 700;
+                            letter-spacing: 0.8px;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 4px;
+
+                            for star in [0, 1, 2, 3, 4, 5] : MetroButton {
+                                text: star == 0 ? root.strings.unrated : star + "★";
+                                text-color: root.inspector-importance == star ? #ffffff : root.theme.text;
+                                base-bg: root.inspector-importance == star ? (star >= 4 ? root.theme.yellow : (star == 1 ? root.theme.red : root.theme.accent)) : root.theme.surface0;
+                                hover-bg: root.theme.surface1;
+                                active-bg: root.theme.surface2;
+                                height: 26px;
+                                horizontal-stretch: 1;
+                                clicked => { root.update-importance(star); }
+                            }
+                        }
+                    }
+
+                    // Summary & Notes Appendix Editor
+                    VerticalLayout {
+                        spacing: 6px;
+
+                        Text {
+                            text: root.strings.summary_header;
+                            color: root.theme.overlay1;
+                            font-size: 10px;
+                            font-weight: 700;
+                            letter-spacing: 0.8px;
+                        }
+
+                        Rectangle {
+                            background: root.theme.base;
+                            border-radius: 2px;
+                            border-width: 1px;
+                            border-color: root.theme.surface2;
+                            min-height: 58px;
+
+                            VerticalLayout {
+                                padding: 8px;
+
+                                TextInput {
+                                    text: root.inspector-summary;
+                                    color: root.theme.text;
+                                    font-size: 11px;
+                                    wrap: word-wrap;
+                                    edited => {
+                                        root.update-summary(self.text);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Projects Tags Box
+                    VerticalLayout {
+                        spacing: 6px;
+
+                        Text {
+                            text: root.strings.projects_header;
+                            color: root.theme.overlay1;
+                            font-size: 10px;
+                            font-weight: 700;
+                            letter-spacing: 0.8px;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 6px;
+                            alignment: start;
+
+                            for proj[p_idx] in root.inspector-projects : MetroTagChip {
+                                text: proj;
+                                removable: true;
+                                text-color: root.theme.mauve;
+                                base-bg: root.theme.mauve.transparentize(85%);
+                                border-col: root.theme.mauve.transparentize(60%);
+                                remove => { root.remove-project(p_idx); }
+                            }
+
+                            // Add project input
+                            Rectangle {
+                                height: 22px;
+                                width: 110px;
+                                background: root.theme.base;
+                                border-radius: 2px;
+                                border-width: 1px;
+                                border-color: root.theme.surface2;
+
+                                HorizontalLayout {
+                                    padding-left: 6px;
+                                    padding-right: 6px;
+
+                                    proj-in := TextInput {
+                                        text: root.new-project-input;
+                                        color: root.theme.text;
+                                        font-size: 11px;
+                                        vertical-alignment: center;
+                                        edited => { root.new-project-input = self.text; }
+                                        accepted => {
+                                            if self.text != "" {
+                                                root.add-project(self.text);
+                                                self.text = "";
+                                                root.new-project-input = "";
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Tags Box
+                    VerticalLayout {
+                        spacing: 6px;
+
+                        Text {
+                            text: root.strings.tags_header;
+                            color: root.theme.overlay1;
+                            font-size: 10px;
+                            font-weight: 700;
+                            letter-spacing: 0.8px;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 6px;
+                            alignment: start;
+
+                            for tag[t_idx] in root.inspector-tags : MetroTagChip {
+                                text: tag;
+                                removable: true;
+                                text-color: root.theme.accent;
+                                base-bg: root.theme.accent.transparentize(85%);
+                                border-col: root.theme.accent.transparentize(60%);
+                                remove => { root.remove-tag(t_idx); }
+                            }
+
+                            // Add tag input
+                            Rectangle {
+                                height: 22px;
+                                width: 110px;
+                                background: root.theme.base;
+                                border-radius: 2px;
+                                border-width: 1px;
+                                border-color: root.theme.surface2;
+
+                                HorizontalLayout {
+                                    padding-left: 6px;
+                                    padding-right: 6px;
+
+                                    tag-in := TextInput {
+                                        text: root.new-tag-input;
+                                        color: root.theme.text;
+                                        font-size: 11px;
+                                        vertical-alignment: center;
+                                        edited => { root.new-tag-input = self.text; }
+                                        accepted => {
+                                            if self.text != "" {
+                                                root.add-tag(self.text);
+                                                self.text = "";
+                                                root.new-tag-input = "";
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // System Operations Grid (Metro Action Tiles)
+                    VerticalLayout {
+                        spacing: 6px;
+
+                        Text {
+                            text: root.strings.system_actions_header;
+                            color: root.theme.overlay1;
+                            font-size: 10px;
+                            font-weight: 700;
+                            letter-spacing: 0.8px;
+                        }
+
+                        // 2-Column Action Grid
+                        HorizontalLayout {
+                            spacing: 6px;
+
+                            MetroButton {
+                                text: root.inspector-has-pdf ? root.strings.reveal_pdf : root.strings.no_pdf;
+                                has-icon: true;
+                                icon-src: @image-url("icons/doc.svg");
+                                text-color: root.theme.text;
+                                base-bg: root.theme.surface0;
+                                hover-bg: root.theme.surface1;
+                                active-bg: root.theme.surface2;
+                                height: 32px;
+                                horizontal-stretch: 1;
+                                clicked => { root.reveal-pdf(); }
+                            }
+
+                            MetroButton {
+                                text: root.inspector-has-note ? root.strings.reveal_note : root.strings.create_note;
+                                has-icon: true;
+                                icon-src: @image-url("icons/note.svg");
+                                text-color: root.inspector-has-note ? root.theme.text : #ffffff;
+                                base-bg: root.inspector-has-note ? root.theme.surface0 : root.theme.peach;
+                                hover-bg: root.theme.surface1;
+                                active-bg: root.theme.surface2;
+                                height: 32px;
+                                horizontal-stretch: 1;
+                                clicked => {
+                                    if root.inspector-has-note {
+                                        root.reveal-note();
+                                    } else {
+                                        root.import-selected();
+                                    }
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 6px;
+
+                            MetroButton {
+                                text: root.strings.copy_bibtex;
+                                has-icon: true;
+                                icon-src: @image-url("icons/quote.svg");
+                                text-color: root.theme.text;
+                                base-bg: root.theme.surface0;
+                                hover-bg: root.theme.surface1;
+                                active-bg: root.theme.surface2;
+                                height: 30px;
+                                horizontal-stretch: 1;
+                                clicked => { root.copy-bibtex(); }
+                            }
+
+                            MetroButton {
+                                text: root.strings.copy_citekey;
+                                has-icon: true;
+                                icon-src: @image-url("icons/key.svg");
+                                text-color: root.theme.text;
+                                base-bg: root.theme.surface0;
+                                hover-bg: root.theme.surface1;
+                                active-bg: root.theme.surface2;
+                                height: 30px;
+                                horizontal-stretch: 1;
+                                clicked => { root.copy-citekey(); }
+                            }
+                        }
+
+                        MetroButton {
+                            text: root.strings.move_to_trash;
+                            has-icon: true;
+                            icon-src: @image-url("icons/trash.svg");
+                            text-color: root.theme.red;
+                            base-bg: root.theme.red.transparentize(88%);
+                            hover-bg: root.theme.red.transparentize(75%);
+                            active-bg: root.theme.red.transparentize(65%);
+                            border-col: root.theme.red.transparentize(60%);
+                            height: 30px;
+                            clicked => { root.delete-paper(); }
+                        }
+                    }
+
+                    // Stretcher
+                    Rectangle { vertical-stretch: 1; }
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // 3. METRO SETTINGS & VAULTS MODAL (PIVOT OVERLAY)
+    // =========================================================================
+    if root.show-settings : Rectangle {
+        background: #00000040;
+
+        TouchArea {
+            // Block background clicks
+        }
+
+        // Modal Content Card
+        Rectangle {
+            width: 680px;
+            height: 520px;
+            background: root.theme.mantle;
+            border-radius: 2px;
+            border-width: 1px;
+            border-color: root.theme.surface2;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+
+            VerticalLayout {
+                padding: 24px;
+                spacing: 16px;
+
+                // Modal Header & Pivot Tabs
+                HorizontalLayout {
+                    alignment: space-between;
+
+                    // Modern Modal Pivot Tabs (No Underlines, Pure Typography)
+                    HorizontalLayout {
+                        spacing: 24px;
+
+                        // Tab 0: Vaults
+                        Rectangle {
+                            height: 36px;
+                            background: #00000000;
+                            TouchArea {
+                                clicked => { root.set-settings-tab(0); }
+                                mouse-cursor: pointer;
+                            }
+                            Text {
+                                text: root.strings.vaults_tab;
+                                color: root.settings-tab == 0 ? root.theme.accent : root.theme.overlay1;
+                                font-size: root.settings-tab == 0 ? 22px : 16px;
+                                font-weight: root.settings-tab == 0 ? 700 : 300;
+                                vertical-alignment: center;
+                                animate font-size { duration: 120ms; }
+                                animate color { duration: 120ms; }
+                            }
+                        }
+
+                        // Tab 1: Theme
+                        Rectangle {
+                            height: 36px;
+                            background: #00000000;
+                            TouchArea {
+                                clicked => { root.set-settings-tab(1); }
+                                mouse-cursor: pointer;
+                            }
+                            Text {
+                                text: root.strings.theme_tab;
+                                color: root.settings-tab == 1 ? root.theme.accent : root.theme.overlay1;
+                                font-size: root.settings-tab == 1 ? 22px : 16px;
+                                font-weight: root.settings-tab == 1 ? 700 : 300;
+                                vertical-alignment: center;
+                                animate font-size { duration: 120ms; }
+                                animate color { duration: 120ms; }
+                            }
+                        }
+
+                        // Tab 2: Language
+                        Rectangle {
+                            height: 36px;
+                            background: #00000000;
+                            TouchArea {
+                                clicked => { root.set-settings-tab(2); }
+                                mouse-cursor: pointer;
+                            }
+                            Text {
+                                text: root.strings.language_tab;
+                                color: root.settings-tab == 2 ? root.theme.accent : root.theme.overlay1;
+                                font-size: root.settings-tab == 2 ? 22px : 16px;
+                                font-weight: root.settings-tab == 2 ? 700 : 300;
+                                vertical-alignment: center;
+                                animate font-size { duration: 120ms; }
+                                animate color { duration: 120ms; }
+                            }
+                        }
+
+                        // Tab 3: About
+                        Rectangle {
+                            height: 36px;
+                            background: #00000000;
+                            TouchArea {
+                                clicked => { root.set-settings-tab(3); }
+                                mouse-cursor: pointer;
+                            }
+                            Text {
+                                text: root.strings.about_tab;
+                                color: root.settings-tab == 3 ? root.theme.accent : root.theme.overlay1;
+                                font-size: root.settings-tab == 3 ? 22px : 16px;
+                                font-weight: root.settings-tab == 3 ? 700 : 300;
+                                vertical-alignment: center;
+                                animate font-size { duration: 120ms; }
+                                animate color { duration: 120ms; }
+                            }
+                        }
+                    }
+
+                    // Close Button
+                    Rectangle {
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 2px;
+                        background: set-close-touch.has-hover ? root.theme.surface1 : root.theme.surface0;
+                        animate background { duration: 80ms; }
+
+                        set-close-touch := TouchArea {
+                            clicked => { root.close-settings(); }
+                            mouse-cursor: pointer;
+                        }
+
+                        Image {
+                            source: @image-url("icons/win-close.svg");
+                            width: 10px;
+                            height: 10px;
+                            colorize: root.theme.subtext1;
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                        }
+                    }
+                }
+
+                // =============================================================
+                // Panorama Viewport & Horizontal Slider for Settings Tabs
+                // =============================================================
+                Rectangle {
+                    clip: true;
+                    vertical-stretch: 1;
+
+                    // Panorama Horizontal Ribbon
+                    Rectangle {
+                        width: parent.width * 4;
+                        height: parent.height;
+                        x: - root.settings-tab * parent.width;
+                        animate x { duration: 260ms; easing: cubic-bezier(0.1, 0.9, 0.2, 1.0); }
+
+                        // -----------------------------------------------------
+                        // TAB 0: VAULTS MANAGER
+                        // -----------------------------------------------------
+                        Rectangle {
+                            x: 0px;
+                            width: parent.width / 4;
+                            height: parent.height;
+
+                            VerticalLayout {
+                                padding-right: 14px;
+                                vertical-stretch: 1;
+                                spacing: 12px;
+
+                                HorizontalLayout {
+                                    alignment: space-between;
+
+                                    Text {
+                                        text: root.current-language == "zh" ? "已登记文献库列表 (可自由重命名别名)" : "Registered Vaults (Rename alias supported)";
+                                        color: root.theme.subtext1;
+                                        font-size: 12px;
+                                        font-weight: 600;
+                                        vertical-alignment: center;
+                                    }
+
+                                    MetroButton {
+                                        text: root.strings.add_vault;
+                                        text-color: #ffffff;
+                                        base-bg: root.theme.accent;
+                                        hover-bg: root.theme.accent.darker(10%);
+                                        active-bg: root.theme.accent.darker(20%);
+                                        height: 28px;
+                                        clicked => {
+                                            root.add-vault-dialog();
+                                        }
+                                    }
+                                }
+
+                                // Vaults List
+                                ListView {
+                                    vertical-stretch: 1;
+
+                                    for vault in root.registered-vaults : Rectangle {
+                                        height: root.editing-vault-path == vault.path ? 70px : 52px;
+                                        background: vault.is-active ? root.theme.accent.transparentize(90%) : (v-touch.has-hover ? root.theme.surface0.transparentize(50%) : #00000000);
+                                        border-radius: 2px;
+                                        border-width: 1px;
+                                        border-color: vault.is-active ? root.theme.accent : (v-touch.has-hover ? root.theme.surface2.transparentize(60%) : #00000000);
+                                        animate background { duration: 80ms; }
+                                        animate border-color { duration: 80ms; }
+
+                                        v-touch := TouchArea {}
+
+                                        VerticalLayout {
+                                            padding: 10px;
+                                            alignment: center;
+
+                                            if root.editing-vault-path != vault.path : HorizontalLayout {
+                                                alignment: space-between;
+
+                                                VerticalLayout {
+                                                    spacing: 2px;
+                                                    alignment: center;
+                                                    horizontal-stretch: 1;
+
+                                                    HorizontalLayout {
+                                                        spacing: 8px;
+                                                        Text {
+                                                            text: vault.name;
+                                                            color: root.theme.text;
+                                                            font-size: 13px;
+                                                            font-weight: 600;
+                                                            vertical-alignment: center;
+                                                        }
+                                                        if vault.is-active : Text {
+                                                            text: "● " + root.strings.active_vault;
+                                                            color: root.theme.accent;
+                                                            font-size: 11px;
+                                                            font-weight: 700;
+                                                            vertical-alignment: center;
+                                                        }
+                                                    }
+
+                                                    Text {
+                                                        text: vault.path;
+                                                        color: root.theme.overlay1;
+                                                        font-size: 10px;
+                                                        overflow: elide;
+                                                    }
+                                                }
+
+                                                HorizontalLayout {
+                                                    spacing: 6px;
+                                                    alignment: end;
+
+                                                    if !vault.is-active : MetroButton {
+                                                        text: root.strings.switch_vault;
+                                                        text-color: root.theme.text;
+                                                        base-bg: root.theme.surface1;
+                                                        hover-bg: root.theme.surface2;
+                                                        active-bg: root.theme.surface2.darker(10%);
+                                                        height: 26px;
+                                                        clicked => {
+                                                            root.switch-vault(vault.path);
+                                                        }
+                                                    }
+
+                                                    MetroButton {
+                                                        text: root.strings.rename_vault;
+                                                        text-color: root.theme.subtext1;
+                                                        base-bg: root.theme.surface1;
+                                                        hover-bg: root.theme.surface2;
+                                                        active-bg: root.theme.surface2.darker(10%);
+                                                        height: 26px;
+                                                        clicked => {
+                                                            root.editing-vault-path = vault.path;
+                                                            root.editing-vault-name = vault.name;
+                                                        }
+                                                    }
+
+                                                    MetroButton {
+                                                        text: root.strings.unmanage_vault;
+                                                        text-color: root.theme.red;
+                                                        base-bg: root.theme.red.transparentize(90%);
+                                                        hover-bg: root.theme.red.transparentize(75%);
+                                                        active-bg: root.theme.red.transparentize(65%);
+                                                        height: 26px;
+                                                        clicked => {
+                                                            root.remove-vault(vault.path);
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            if root.editing-vault-path == vault.path : HorizontalLayout {
+                                                spacing: 8px;
+                                                alignment: space-between;
+
+                                                Rectangle {
+                                                    horizontal-stretch: 1;
+                                                    height: 30px;
+                                                    background: root.theme.base;
+                                                    border-radius: 2px;
+                                                    border-width: 1px;
+                                                    border-color: root.theme.accent;
+
+                                                    HorizontalLayout {
+                                                        padding-left: 8px;
+                                                        padding-right: 8px;
+                                                        rename-in := TextInput {
+                                                            text: root.editing-vault-name;
+                                                            color: root.theme.text;
+                                                            font-size: 12px;
+                                                            vertical-alignment: center;
+                                                            edited => { root.editing-vault-name = self.text; }
+                                                        }
+                                                    }
+                                                }
+
+                                                MetroButton {
+                                                    text: root.strings.save_rename;
+                                                    text-color: #ffffff;
+                                                    base-bg: root.theme.accent;
+                                                    hover-bg: root.theme.accent.darker(10%);
+                                                    active-bg: root.theme.accent.darker(20%);
+                                                    height: 30px;
+                                                    clicked => {
+                                                        root.save-rename-vault(vault.path, root.editing-vault-name);
+                                                        root.editing-vault-path = "";
+                                                    }
+                                                }
+
+                                                MetroButton {
+                                                    text: root.strings.cancel;
+                                                    text-color: root.theme.text;
+                                                    base-bg: root.theme.surface1;
+                                                    hover-bg: root.theme.surface2;
+                                                    active-bg: root.theme.surface2.darker(10%);
+                                                    height: 30px;
+                                                    clicked => {
+                                                        root.editing-vault-path = "";
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: root.strings.unmanage_hint;
+                                    color: root.theme.overlay1;
+                                    font-size: 10px;
+                                    font-italic: true;
+                                }
+                            }
+                        }
+
+                        // -----------------------------------------------------
+                        // TAB 1: THEME COLOR SCHEMES
+                        // -----------------------------------------------------
+                        Rectangle {
+                            x: parent.width / 4;
+                            width: parent.width / 4;
+                            height: parent.height;
+
+                            VerticalLayout {
+                                padding-right: 14px;
+                                vertical-stretch: 1;
+                                spacing: 8px;
+
+                                // Parchment
+                                Rectangle {
+                                    height: 64px;
+                                    background: root.current-theme-id == "parchment" ? root.theme.accent.transparentize(90%) : (th1.has-hover ? root.theme.surface0.transparentize(50%) : #00000000);
+                                    border-radius: 2px;
+                                    border-width: 1px;
+                                    border-color: root.current-theme-id == "parchment" ? root.theme.accent : (th1.has-hover ? root.theme.surface2.transparentize(60%) : #00000000);
+                                    animate background { duration: 80ms; }
+                                    animate border-color { duration: 80ms; }
+
+                                    th1 := TouchArea {
+                                        clicked => { root.switch-theme("parchment"); }
+                                        mouse-cursor: pointer;
+                                    }
+
+                                    VerticalLayout {
+                                        padding: 10px;
+                                        alignment: center;
+                                        spacing: 2px;
+
+                                        Text {
+                                            text: root.strings.theme_parchment_title;
+                                            color: root.theme.text;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                        }
+                                        Text {
+                                            text: root.strings.theme_parchment_desc;
+                                            color: root.theme.subtext1;
+                                            font-size: 11px;
+                                        }
+                                    }
+                                }
+
+                                // Rose Pine Dawn
+                                Rectangle {
+                                    height: 64px;
+                                    background: root.current-theme-id == "rose_pine_dawn" ? root.theme.accent.transparentize(90%) : (th2.has-hover ? root.theme.surface0.transparentize(50%) : #00000000);
+                                    border-radius: 2px;
+                                    border-width: 1px;
+                                    border-color: root.current-theme-id == "rose_pine_dawn" ? root.theme.accent : (th2.has-hover ? root.theme.surface2.transparentize(60%) : #00000000);
+                                    animate background { duration: 80ms; }
+                                    animate border-color { duration: 80ms; }
+
+                                    th2 := TouchArea {
+                                        clicked => { root.switch-theme("rose_pine_dawn"); }
+                                        mouse-cursor: pointer;
+                                    }
+
+                                    VerticalLayout {
+                                        padding: 10px;
+                                        alignment: center;
+                                        spacing: 2px;
+
+                                        Text {
+                                            text: root.strings.theme_rose_pine_title;
+                                            color: root.theme.text;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                        }
+                                        Text {
+                                            text: root.strings.theme_rose_pine_desc;
+                                            color: root.theme.subtext1;
+                                            font-size: 11px;
+                                        }
+                                    }
+                                }
+
+                                // Solarized Light
+                                Rectangle {
+                                    height: 64px;
+                                    background: root.current-theme-id == "solarized_light" ? root.theme.accent.transparentize(90%) : (th3.has-hover ? root.theme.surface0.transparentize(50%) : #00000000);
+                                    border-radius: 2px;
+                                    border-width: 1px;
+                                    border-color: root.current-theme-id == "solarized_light" ? root.theme.accent : (th3.has-hover ? root.theme.surface2.transparentize(60%) : #00000000);
+                                    animate background { duration: 80ms; }
+                                    animate border-color { duration: 80ms; }
+
+                                    th3 := TouchArea {
+                                        clicked => { root.switch-theme("solarized_light"); }
+                                        mouse-cursor: pointer;
+                                    }
+
+                                    VerticalLayout {
+                                        padding: 10px;
+                                        alignment: center;
+                                        spacing: 2px;
+
+                                        Text {
+                                            text: root.strings.theme_solarized_title;
+                                            color: root.theme.text;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                        }
+                                        Text {
+                                            text: root.strings.theme_solarized_desc;
+                                            color: root.theme.subtext1;
+                                            font-size: 11px;
+                                        }
+                                    }
+                                }
+
+                                // Antique Ivory
+                                Rectangle {
+                                    height: 64px;
+                                    background: root.current-theme-id == "antique_ivory" ? root.theme.accent.transparentize(90%) : (th4.has-hover ? root.theme.surface0.transparentize(50%) : #00000000);
+                                    border-radius: 2px;
+                                    border-width: 1px;
+                                    border-color: root.current-theme-id == "antique_ivory" ? root.theme.accent : (th4.has-hover ? root.theme.surface2.transparentize(60%) : #00000000);
+                                    animate background { duration: 80ms; }
+                                    animate border-color { duration: 80ms; }
+
+                                    th4 := TouchArea {
+                                        clicked => { root.switch-theme("antique_ivory"); }
+                                        mouse-cursor: pointer;
+                                    }
+
+                                    VerticalLayout {
+                                        padding: 10px;
+                                        alignment: center;
+                                        spacing: 2px;
+
+                                        Text {
+                                            text: root.strings.theme_ivory_title;
+                                            color: root.theme.text;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                        }
+                                        Text {
+                                            text: root.strings.theme_ivory_desc;
+                                            color: root.theme.subtext1;
+                                            font-size: 11px;
+                                        }
+                                    }
+                                }
+
+                                // Catppuccin Latte
+                                Rectangle {
+                                    height: 64px;
+                                    background: root.current-theme-id == "catppuccin_latte" ? root.theme.accent.transparentize(90%) : (th5.has-hover ? root.theme.surface0.transparentize(50%) : #00000000);
+                                    border-radius: 2px;
+                                    border-width: 1px;
+                                    border-color: root.current-theme-id == "catppuccin_latte" ? root.theme.accent : (th5.has-hover ? root.theme.surface2.transparentize(60%) : #00000000);
+                                    animate background { duration: 80ms; }
+                                    animate border-color { duration: 80ms; }
+
+                                    th5 := TouchArea {
+                                        clicked => { root.switch-theme("catppuccin_latte"); }
+                                        mouse-cursor: pointer;
+                                    }
+
+                                    VerticalLayout {
+                                        padding: 10px;
+                                        alignment: center;
+                                        spacing: 2px;
+
+                                        Text {
+                                            text: root.strings.theme_latte_title;
+                                            color: root.theme.text;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                        }
+                                        Text {
+                                            text: root.strings.theme_latte_desc;
+                                            color: root.theme.subtext1;
+                                            font-size: 11px;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // -----------------------------------------------------
+                        // TAB 2: INTERFACE LANGUAGE
+                        // -----------------------------------------------------
+                        Rectangle {
+                            x: parent.width * 2 / 4;
+                            width: parent.width / 4;
+                            height: parent.height;
+
+                            VerticalLayout {
+                                padding-right: 14px;
+                                vertical-stretch: 1;
+                                spacing: 12px;
+
+                                // Chinese
+                                Rectangle {
+                                    height: 54px;
+                                    background: root.current-language == "zh" ? root.theme.accent.transparentize(90%) : (l1.has-hover ? root.theme.surface0.transparentize(50%) : #00000000);
+                                    border-radius: 2px;
+                                    border-width: 1px;
+                                    border-color: root.current-language == "zh" ? root.theme.accent : (l1.has-hover ? root.theme.surface2.transparentize(60%) : #00000000);
+                                    animate background { duration: 80ms; }
+                                    animate border-color { duration: 80ms; }
+
+                                    l1 := TouchArea {
+                                        clicked => { root.switch-language("zh"); }
+                                        mouse-cursor: pointer;
+                                    }
+
+                                    HorizontalLayout {
+                                        padding: 14px;
+                                        alignment: start;
+
+                                        Text {
+                                            text: "简体中文 (Simplified Chinese)";
+                                            color: root.theme.text;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+
+                                // English
+                                Rectangle {
+                                    height: 54px;
+                                    background: root.current-language == "en" ? root.theme.accent.transparentize(90%) : (l2.has-hover ? root.theme.surface0.transparentize(50%) : #00000000);
+                                    border-radius: 2px;
+                                    border-width: 1px;
+                                    border-color: root.current-language == "en" ? root.theme.accent : (l2.has-hover ? root.theme.surface2.transparentize(60%) : #00000000);
+                                    animate background { duration: 80ms; }
+                                    animate border-color { duration: 80ms; }
+
+                                    l2 := TouchArea {
+                                        clicked => { root.switch-language("en"); }
+                                        mouse-cursor: pointer;
+                                    }
+
+                                    HorizontalLayout {
+                                        padding: 14px;
+                                        alignment: start;
+
+                                        Text {
+                                            text: "English (US)";
+                                            color: root.theme.text;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+
+                                Rectangle { vertical-stretch: 1; }
+                            }
+                        }
+
+                        // -----------------------------------------------------
+                        // TAB 3: ABOUT LUCENTIA & LX INDEX
+                        // -----------------------------------------------------
+                        Rectangle {
+                            x: parent.width * 3 / 4;
+                            width: parent.width / 4;
+                            height: parent.height;
+
+                            VerticalLayout {
+                                padding-right: 14px;
+                                vertical-stretch: 1;
+                                spacing: 12px;
+                                alignment: space-between;
+
+                                VerticalLayout {
+                                    spacing: 8px;
+
+                                    HorizontalLayout {
+                                        spacing: 16px;
+                                        alignment: start;
+
+                                        Image {
+                                            source: @image-url("../assets/lx-index-fluent.svg");
+                                            width: 64px;
+                                            height: 64px;
+                                            image-fit: contain;
+                                            y: (parent.height - self.height) / 2;
+                                        }
+
+                                        VerticalLayout {
+                                            spacing: 4px;
+                                            alignment: center;
+
+                                            HorizontalLayout {
+                                                spacing: 8px;
+                                                alignment: start;
+
+                                                Text {
+                                                    text: "lx";
+                                                    font-family: root.brand-script-font;
+                                                    font-size: 26px;
+                                                    color: root.theme.accent;
+                                                    vertical-alignment: center;
+                                                }
+
+                                                Text {
+                                                    text: "Index";
+                                                    font-family: root.brand-serif-font;
+                                                    font-size: 24px;
+                                                    font-weight: 500;
+                                                    color: root.theme.text;
+                                                    vertical-alignment: center;
+                                                }
+
+                                                Rectangle {
+                                                    height: 20px;
+                                                    background: root.theme.accent.transparentize(85%);
+                                                    border-radius: 1px;
+                                                    y: (parent.height - self.height) / 2;
+                                                    HorizontalLayout {
+                                                        padding-left: 6px;
+                                                        padding-right: 6px;
+                                                        Text {
+                                                            text: "v0.6.0";
+                                                            font-size: 11px;
+                                                            font-weight: 700;
+                                                            color: root.theme.accent;
+                                                            vertical-alignment: center;
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Text {
+                                                text: root.strings.about_tagline;
+                                                color: root.theme.subtext1;
+                                                font-size: 12px;
+                                                font-weight: 600;
+                                            }
+                                        }
+                                    }
+
+                                    Text {
+                                        text: root.strings.about_desc;
+                                        color: root.theme.subtext0;
+                                        font-size: 11px;
+                                        wrap: word-wrap;
+                                    }
+
+                                    Rectangle {
+                                        height: 1px;
+                                        background: root.theme.surface2.transparentize(60%);
+                                    }
+
+                                    Text {
+                                        text: root.strings.about_tech_stack;
+                                        color: root.theme.overlay1;
+                                        font-size: 10px;
+                                    }
+                                }
+
+                                Text {
+                                    text: root.strings.about_copyright;
+                                    color: root.theme.overlay1;
+                                    font-size: 10px;
+                                    horizontal-alignment: center;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

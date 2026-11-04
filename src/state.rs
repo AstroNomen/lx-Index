@@ -104,21 +104,33 @@ impl AppState {
 
     /// Unmanages a vault without deleting local disk files.
     pub fn remove_vault(&mut self, path: &str) -> bool {
+        let norm_target = PathBuf::from(path);
         let initial_len = self.registered_vaults.len();
-        self.registered_vaults.retain(|v| v.path != path);
+        self.registered_vaults.retain(|v| {
+            PathBuf::from(&v.path) != norm_target && !v.path.eq_ignore_ascii_case(path)
+        });
         let removed = self.registered_vaults.len() < initial_len;
 
-        if removed {
-            if let Some(ref current) = self.vault_path {
-                if current.display().to_string() == path {
-                    if let Some(next_vault) = self.registered_vaults.first() {
-                        let next_path = PathBuf::from(&next_vault.path);
-                        let _ = self.load_vault(&next_path);
-                    } else {
-                        self.vault_path = None;
-                        self.library = LibraryScanResult::default();
-                        self.selected_id = None;
-                    }
+        if removed || self.registered_vaults.is_empty() {
+            let is_current = if let Some(ref current) = self.vault_path {
+                current == &norm_target || current.display().to_string().eq_ignore_ascii_case(path)
+            } else {
+                false
+            };
+
+            if is_current || self.registered_vaults.is_empty() {
+                if let Some(next_vault) = self.registered_vaults.first() {
+                    let next_path = PathBuf::from(&next_vault.path);
+                    let _ = self.load_vault(&next_path);
+                } else {
+                    self.vault_path = None;
+                    self.library = LibraryScanResult::default();
+                    self.selected_id = None;
+                    self.search_query.clear();
+                    self.active_perspective = "all".to_string();
+                    self.active_field = None;
+                    self.active_project = None;
+                    self.filter_stars.clear();
                 }
             }
             self.save_current_config();
@@ -559,6 +571,9 @@ impl AppState {
     }
 
     pub fn save_current_config(&self) {
+        if cfg!(test) {
+            return;
+        }
         if let Some(config_path) = Self::config_file_path() {
             if let Some(parent) = config_path.parent() {
                 let _ = fs::create_dir_all(parent);
