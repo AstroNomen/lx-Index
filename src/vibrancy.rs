@@ -341,6 +341,13 @@ unsafe extern "C" fn on_window_will_enter_fullscreen(
             std::mem::transmute(objc_msgSend.as_ptr());
         msg_send_usize(win, sel_set_title_visibility as _, 0); // NSWindowTitleVisible = 0
 
+        // 3. Compact titlebar style for native sleek fullscreen dropdown
+        let sel_set_toolbar_style = sel_registerName(b"setToolbarStyle:\0".as_ptr() as *const _);
+        msg_send_usize(win, sel_set_toolbar_style as _, 4); // NSWindowToolbarStyleUnifiedCompact = 4
+
+        // Hide inactive overlay in fullscreen dropdown
+        setup_or_update_traffic_lights_overlay(win, true);
+
         // Toolbar remains permanently attached and visible (no setVisible:false)
         // so window geometry is never collapsed, completely eliminating exit-fullscreen jumping!
     }
@@ -385,6 +392,12 @@ unsafe extern "C" fn on_window_will_exit_fullscreen(
             let sel_set_toolbar_style = sel_registerName(b"setToolbarStyle:\0".as_ptr() as *const _);
             msg_send_usize(win, sel_set_toolbar_style as _, 3); // Unified (3)
         }
+
+        let sel_is_key = sel_registerName(b"isKeyWindow\0".as_ptr() as *const _);
+        let msg_send_is_key: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> bool =
+            std::mem::transmute(objc_msgSend.as_ptr());
+        let is_key = msg_send_is_key(win, sel_is_key as _);
+        setup_or_update_traffic_lights_overlay(win, is_key);
     }
 }
 
@@ -415,8 +428,6 @@ unsafe extern "C" fn on_window_did_exit_fullscreen(
 
         let tb = get_or_create_toolbar();
         if !tb.is_null() {
-
-
             let sel_set_toolbar = sel_registerName(b"setToolbar:\0".as_ptr() as *const _);
             let msg_send_set_tb: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, *mut std::ffi::c_void) =
                 std::mem::transmute(objc_msgSend.as_ptr());
@@ -425,7 +436,138 @@ unsafe extern "C" fn on_window_did_exit_fullscreen(
             let sel_set_toolbar_style = sel_registerName(b"setToolbarStyle:\0".as_ptr() as *const _);
             msg_send_usize(win, sel_set_toolbar_style as _, 3); // Unified (3)
         }
+
+        let sel_is_key = sel_registerName(b"isKeyWindow\0".as_ptr() as *const _);
+        let msg_send_is_key: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> bool =
+            std::mem::transmute(objc_msgSend.as_ptr());
+        let is_key = msg_send_is_key(win, sel_is_key as _);
+        setup_or_update_traffic_lights_overlay(win, is_key);
     }
+}
+
+#[cfg(target_os = "macos")]
+static mut INACTIVE_OVERLAYS: [*mut std::ffi::c_void; 3] = [
+    std::ptr::null_mut(),
+    std::ptr::null_mut(),
+    std::ptr::null_mut(),
+];
+
+#[cfg(target_os = "macos")]
+unsafe fn setup_or_update_traffic_lights_overlay(win: *mut std::ffi::c_void, is_key: bool) {
+    if win.is_null() {
+        return;
+    }
+    let sel_btn = sel_registerName(b"standardWindowButton:\0".as_ptr() as *const _);
+    let msg_send_btn: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, usize) -> *mut std::ffi::c_void =
+        std::mem::transmute(objc_msgSend.as_ptr());
+    let sel_set_wants_layer = sel_registerName(b"setWantsLayer:\0".as_ptr() as *const _);
+    let sel_layer = sel_registerName(b"layer\0".as_ptr() as *const _);
+    let sel_set_frame = sel_registerName(b"setFrame:\0".as_ptr() as *const _);
+    let sel_set_corner_radius = sel_registerName(b"setCornerRadius:\0".as_ptr() as *const _);
+    let sel_set_bg_color = sel_registerName(b"setBackgroundColor:\0".as_ptr() as *const _);
+    let sel_set_border_color = sel_registerName(b"setBorderColor:\0".as_ptr() as *const _);
+    let sel_set_border_width = sel_registerName(b"setBorderWidth:\0".as_ptr() as *const _);
+    let sel_set_hidden = sel_registerName(b"setHidden:\0".as_ptr() as *const _);
+    let sel_add_sublayer = sel_registerName(b"addSublayer:\0".as_ptr() as *const _);
+
+    let msg_send_bool: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, bool) =
+        std::mem::transmute(objc_msgSend.as_ptr());
+    let msg_send_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
+        std::mem::transmute(objc_msgSend.as_ptr());
+    let msg_send_ptr: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, *mut std::ffi::c_void) =
+        std::mem::transmute(objc_msgSend.as_ptr());
+    let msg_send_rect: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, NSRect) =
+        std::mem::transmute(objc_msgSend.as_ptr());
+    let msg_send_f64: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, f64) =
+        std::mem::transmute(objc_msgSend.as_ptr());
+
+    let calayer_cls = objc_getClass(b"CALayer\0".as_ptr() as *const _);
+    let sel_layer_factory = sel_registerName(b"layer\0".as_ptr() as *const _);
+    let ns_color_cls = objc_getClass(b"NSColor\0".as_ptr() as *const _);
+    let sel_color_with_white = sel_registerName(b"colorWithCalibratedWhite:alpha:\0".as_ptr() as *const _);
+    let sel_cg_color = sel_registerName(b"CGColor\0".as_ptr() as *const _);
+
+    let msg_send_color: unsafe extern "C" fn(*const std::ffi::c_void, *const std::ffi::c_void, f64, f64) -> *mut std::ffi::c_void =
+        std::mem::transmute(objc_msgSend.as_ptr());
+
+    // Native macOS inactive traffic light colors: solid opaque grey circle
+    let bg_color = msg_send_color(ns_color_cls as _, sel_color_with_white as _, 0.81, 1.0);
+    let cg_bg = if !bg_color.is_null() { msg_send_obj(bg_color, sel_cg_color as _) } else { std::ptr::null_mut() };
+    let border_color = msg_send_color(ns_color_cls as _, sel_color_with_white as _, 0.68, 1.0);
+    let cg_border = if !border_color.is_null() { msg_send_obj(border_color, sel_cg_color as _) } else { std::ptr::null_mut() };
+
+    for btn_id in 0..3 {
+        let btn = msg_send_btn(win, sel_btn as _, btn_id);
+        if btn.is_null() {
+            continue;
+        }
+        msg_send_bool(btn, sel_set_wants_layer as _, true);
+        let btn_layer = msg_send_obj(btn, sel_layer as _);
+        if btn_layer.is_null() {
+            continue;
+        }
+
+        let mut overlay = INACTIVE_OVERLAYS[btn_id];
+        if overlay.is_null() && !calayer_cls.is_null() {
+            overlay = msg_send_obj(calayer_cls as _, sel_layer_factory as _);
+            if !overlay.is_null() {
+                msg_send_rect(overlay, sel_set_frame as _, NSRect {
+                    origin: NSPoint { x: 1.0, y: 2.0 },
+                    size: NSSize { width: 12.0, height: 12.0 },
+                });
+                msg_send_f64(overlay, sel_set_corner_radius as _, 6.0);
+                if !cg_bg.is_null() {
+                    msg_send_ptr(overlay, sel_set_bg_color as _, cg_bg);
+                }
+                if !cg_border.is_null() {
+                    msg_send_ptr(overlay, sel_set_border_color as _, cg_border);
+                }
+                msg_send_f64(overlay, sel_set_border_width as _, 0.5);
+                msg_send_ptr(btn_layer, sel_add_sublayer as _, overlay);
+                INACTIVE_OVERLAYS[btn_id] = overlay;
+            }
+        }
+
+        if !overlay.is_null() {
+            // is_key = true means active window -> overlay is hidden (true)
+            // is_key = false means inactive window -> overlay is shown (false)
+            msg_send_bool(overlay, sel_set_hidden as _, is_key);
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+unsafe extern "C" fn on_window_did_become_key(
+    _this: *mut std::ffi::c_void,
+    _cmd: *mut std::ffi::c_void,
+    notification: *mut std::ffi::c_void,
+) {
+    let sel_object = sel_registerName(b"object\0".as_ptr() as *const _);
+    let msg_send_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
+        std::mem::transmute(objc_msgSend.as_ptr());
+    let win = if !notification.is_null() {
+        msg_send_obj(notification, sel_object as _)
+    } else {
+        MAIN_WINDOW
+    };
+    setup_or_update_traffic_lights_overlay(win, true);
+}
+
+#[cfg(target_os = "macos")]
+unsafe extern "C" fn on_window_did_resign_key(
+    _this: *mut std::ffi::c_void,
+    _cmd: *mut std::ffi::c_void,
+    notification: *mut std::ffi::c_void,
+) {
+    let sel_object = sel_registerName(b"object\0".as_ptr() as *const _);
+    let msg_send_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
+        std::mem::transmute(objc_msgSend.as_ptr());
+    let win = if !notification.is_null() {
+        msg_send_obj(notification, sel_object as _)
+    } else {
+        MAIN_WINDOW
+    };
+    setup_or_update_traffic_lights_overlay(win, false);
 }
 
 #[cfg(target_os = "macos")]
@@ -463,7 +605,7 @@ unsafe fn get_or_create_action_handler() -> *mut std::ffi::c_void {
         cls = objc_allocateClassPair(superclass, class_name, 0);
         if !cls.is_null() {
             let types = b"v@:@\0".as_ptr() as *const _;
-            let methods: [(&[u8], unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void)); 14] = [
+            let methods: [(&[u8], unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void)); 17] = [
                 (b"lxCenter:\0", action_center),
                 (b"lxFill:\0", action_fill),
                 (b"lxLeft:\0", action_left),
@@ -477,7 +619,10 @@ unsafe fn get_or_create_action_handler() -> *mut std::ffi::c_void {
                 (b"windowWillEnterFullScreen:\0", on_window_will_enter_fullscreen),
                 (b"windowWillExitFullScreen:\0", on_window_will_exit_fullscreen),
                 (b"windowDidExitFullScreen:\0", on_window_did_exit_fullscreen),
+                (b"windowDidResignKey:\0", on_window_did_resign_key),
+                (b"windowDidBecomeKey:\0", on_window_did_become_key),
                 (b"appDidBecomeActive:\0", on_app_did_become_active),
+                (b"appDidResignActive:\0", on_window_did_resign_key),
             ];
             for (sel_name, imp) in methods {
                 let sel = sel_registerName(sel_name.as_ptr() as *const _);
@@ -541,12 +686,20 @@ unsafe fn register_fullscreen_notifications(window: *mut std::ffi::c_void) {
 
     // 2. Lifecycle focus notifications: App activation, Window key, and Deminiaturize
     let sel_app_active = sel_registerName(b"appDidBecomeActive:\0".as_ptr() as *const _);
+    let sel_app_resign = sel_registerName(b"appDidResignActive:\0".as_ptr() as *const _);
     let app_active_name = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"NSApplicationDidBecomeActiveNotification\0".as_ptr() as _);
+    let app_resign_name = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"NSApplicationDidResignActiveNotification\0".as_ptr() as _);
     let win_key_name = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"NSWindowDidBecomeKeyNotification\0".as_ptr() as _);
+    let win_resign_name = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"NSWindowDidResignKeyNotification\0".as_ptr() as _);
     let win_demin_name = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"NSWindowDidDeminiaturizeNotification\0".as_ptr() as _);
 
+    let sel_key_change = sel_registerName(b"windowDidBecomeKey:\0".as_ptr() as *const _);
+    let sel_resign_change = sel_registerName(b"windowDidResignKey:\0".as_ptr() as *const _);
+
     msg_send_add_obs(center, sel_add_observer as _, handler, sel_app_active as _, app_active_name, std::ptr::null_mut());
-    msg_send_add_obs(center, sel_add_observer as _, handler, sel_app_active as _, win_key_name, window);
+    msg_send_add_obs(center, sel_add_observer as _, handler, sel_app_resign as _, app_resign_name, std::ptr::null_mut());
+    msg_send_add_obs(center, sel_add_observer as _, handler, sel_key_change as _, win_key_name, window);
+    msg_send_add_obs(center, sel_add_observer as _, handler, sel_resign_change as _, win_resign_name, window);
     msg_send_add_obs(center, sel_add_observer as _, handler, sel_app_active as _, win_demin_name, window);
 }
 
@@ -790,12 +943,12 @@ unsafe fn apply_vibrancy_to_nswindow(window: *mut std::ffi::c_void) {
     // titlebarSeparatorStyle = NSTitlebarSeparatorStyleNone (0)
     msg_send_usize_set(window, sel_set_separator_style as _, 0);
 
-    // Clear window background color to clearColor
+    // Window background color: use windowBackgroundColor (not clearColor) so inactive traffic lights composite as native disabled gray circles
     let ns_color_cls = objc_getClass(b"NSColor\0".as_ptr() as *const _);
-    let sel_clear_color = sel_registerName(b"clearColor\0".as_ptr() as *const _);
-    let clear_color = msg_send_obj(ns_color_cls as _, sel_clear_color as _);
+    let sel_win_bg_color = sel_registerName(b"windowBackgroundColor\0".as_ptr() as *const _);
+    let win_bg_color = msg_send_obj(ns_color_cls as _, sel_win_bg_color as _);
     let sel_set_bg_color = sel_registerName(b"setBackgroundColor:\0".as_ptr() as *const _);
-    msg_send_ptr(window, sel_set_bg_color as _, clear_color);
+    msg_send_ptr(window, sel_set_bg_color as _, win_bg_color);
 
     // 3. Tall Titlebar Unified Styling (Safari / Finder / System Settings concentric traffic lights)
     let toolbar = get_or_create_toolbar();
@@ -811,6 +964,13 @@ unsafe fn apply_vibrancy_to_nswindow(window: *mut std::ffi::c_void) {
 
     // Register observers for fullscreen enter/exit and app activation
     register_fullscreen_notifications(window);
+
+    // Setup traffic lights active/inactive overlay matching window key state
+    let sel_is_key = sel_registerName(b"isKeyWindow\0".as_ptr() as *const _);
+    let msg_send_is_key: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> bool =
+        std::mem::transmute(objc_msgSend.as_ptr());
+    let is_key = msg_send_is_key(window, sel_is_key as _);
+    setup_or_update_traffic_lights_overlay(window, is_key);
 
     // Ensure window delegate implements window:willUseFullScreenPresentationOptions: to autohide chrome in fullscreen
     let sel_delegate = sel_registerName(b"delegate\0".as_ptr() as *const _);
