@@ -56,6 +56,7 @@ pub fn pick_folder() -> Option<PathBuf> {
                 return Some(PathBuf::from(path_str));
             }
         }
+        None
     }
 
     #[cfg(target_os = "windows")]
