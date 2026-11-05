@@ -12,12 +12,13 @@ use lx_index::ops::{
 };
 use lx_index::state::AppState;
 #[cfg(target_os = "macos")]
-use lx_index::vibrancy::setup_macos_vibrancy;
+use lx_index::vibrancy::{setup_macos_menu_bar, setup_macos_vibrancy};
 use lx_index::watcher::{create_shared_watcher, restart_watcher, SharedWatcher};
 use lx_index::{AppWindow, SlintCategoryItem, SlintPaperItem, SlintVaultItem};
 
 fn sync_ui(ui: &AppWindow, state: &AppState) {
-    // 0. Sync Theme & Localization
+    // 0. Sync Theme & Localization & Version
+    ui.set_app_version(format!("v{}", env!("CARGO_PKG_VERSION")).into());
     ui.set_theme(state.theme.to_slint_theme());
     ui.set_strings(get_i18n_strings(&state.language));
     ui.set_current_theme_id(state.theme.id.clone().into());
@@ -575,6 +576,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         ui.on_switch_language(move |lang| {
             let mut state = state_rc.lock().unwrap();
             state.set_language(&lang);
+            #[cfg(target_os = "macos")]
+            setup_macos_menu_bar(&lang);
             if let Some(ui) = ui_handle.upgrade() {
                 sync_ui(&ui, &state);
             }
@@ -862,15 +865,22 @@ fn main() -> Result<(), Box<dyn Error>> {
         t
     };
 
-    // Setup native macOS seamless titlebar integration & window sizing bounds
+    // Setup native macOS seamless titlebar integration, system menu bar & window sizing bounds
     #[cfg(target_os = "macos")]
     let (_timer_fast, _timer_fallback) = {
+        let current_lang = {
+            let st = state.lock().unwrap();
+            st.language.clone()
+        };
+        let lang1 = current_lang.clone();
+        let lang2 = current_lang;
         let t1 = slint::Timer::default();
         t1.start(
             slint::TimerMode::SingleShot,
             std::time::Duration::from_millis(50),
             move || {
                 let _ = setup_macos_vibrancy();
+                let _ = setup_macos_menu_bar(&lang1);
             },
         );
         let t2 = slint::Timer::default();
@@ -879,6 +889,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             std::time::Duration::from_millis(200),
             move || {
                 let _ = setup_macos_vibrancy();
+                let _ = setup_macos_menu_bar(&lang2);
             },
         );
         (t1, t2)

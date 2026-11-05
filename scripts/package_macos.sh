@@ -12,11 +12,9 @@ APP_NAME="lx Index.app"
 APP_DIR="${DIST_DIR}/${APP_NAME}"
 DMG_PATH="${PROJECT_ROOT}/target/release/lx-index-0.6.5-macOS.dmg"
 
-# 1. Ensure binary exists
-if [[ ! -f "${RELEASE_BIN}" ]]; then
-    echo "Release binary not found. Building with cargo build --release..."
-    cargo build --release
-fi
+# 1. Always build latest release binary
+echo "Building release binary with cargo build --release..."
+cargo build --release
 
 # 2. Setup .app Bundle directory structure
 echo "Creating .app bundle structure at: ${APP_DIR}"
@@ -35,7 +33,12 @@ cat > "${APP_DIR}/Contents/Info.plist" << 'EOF'
 <plist version="1.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
+    <string>zh_CN</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>zh_CN</string>
+        <string>en</string>
+    </array>
     <key>CFBundleDisplayName</key>
     <string>lx Index</string>
     <key>CFBundleExecutable</key>

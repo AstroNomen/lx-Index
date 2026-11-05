@@ -188,4 +188,110 @@ When building or reviewing the macOS target, check the following:
 
 ---
 
-*Document version: 0.6.0 — Created for cross-platform agent coordination.*
+## 4. Phase 5: macOS True 3-Column UI & Native System Integration (v0.6.5)
+
+This section documents the macOS platform-specific UI refinements and shared codebase coordination introduced in v0.6.5.
+
+### 4.1 Cross-Platform Version Synchronization
+- **Issue**: Previously, version numbers were hardcoded independently in `ui/appwindow_macos.slint` (`"v0.5.0 Beta"`) and `ui/appwindow_windows.slint` (`"v0.6.0"`), causing settings modal version desynchronization when bumping versions in `Cargo.toml`.
+- **Solution**:
+  - Declared `in-out property <string> app-version: "v0.6.5";` in `AppWindow` across all Slint definitions (`appwindow_macos.slint`, `appwindow.slint`, `appwindow_windows.slint`).
+  - In `sync_ui()` (`src/main.rs`), dynamically bind `ui.set_app_version(format!("v{}", env!("CARGO_PKG_VERSION")).into());`.
+  - Settings About tabs on both macOS and Windows now reference `root.app-version` dynamically. Any version update in `Cargo.toml` is automatically propagated to both platforms without manual edits.
+
+### 4.2 UI Architecture Decoupling (`build.rs`)
+- Explicit target dispatch configured in `build.rs`:
+  ```rust
+  #[cfg(target_os = "windows")]
+  let ui_file = "ui/appwindow_windows.slint";
+
+  #[cfg(target_os = "macos")]
+  let ui_file = "ui/appwindow_macos.slint";
+
+  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  let ui_file = "ui/appwindow.slint";
+  ```
+- Isolates macOS-specific UI definitions (`ui/appwindow_macos.slint`) from Windows Metro styles (`ui/appwindow_windows.slint`) and fallback desktop builds (`ui/appwindow.slint`), ensuring clean separation of design languages.
+
+### 4.3 macOS True 3-Column Continuous Layout
+- **Top Bar Elimination**: Removed the overarching horizontal top header with distinct crust background (`root.theme.crust`) and top horizontal divider. All 3 columns now run continuously from top to bottom:
+  - **Left Sidebar** (`root.theme.mantle`):
+    - Top: macOS traffic lights clearance (`padding-left: 92px`) + literary brand logo (`lx Index`).
+    - Middle: Scrollable navigation tree for perspectives, domains, and projects.
+    - Seamless Layout: Removed all internal horizontal dividers (between brand header, navigation list, and bottom controls), achieving a completely unified, seamless column.
+    - Bottom: App control bar containing Vault selector button & Reload button on the bottom-left corner, and Settings gear button on the bottom-right corner (adjacent to the divider with the middle column). Button designs remain identical to existing specifications.
+  - **Middle Column** (`root.theme.base`):
+    - Top: Unified 52px search HUD bar with search input, star filter dropdown, and reset button.
+    - Middle: Literature card list.
+    - Bottom: Document count status bar (`root.status-bar-text`, e.g., `"显示 12 篇文献 • 共 12 篇"`).
+  - **Right Column** (`root.theme.mantle`):
+    - Continuous inspector pane with metadata, actions, and note stubs.
+
+### 4.4 Search Input Focus & Blur Restoration
+- **Problem**: When the search input in the middle column lost user focus, it remained in the active state with a mauve highlight border and blinking cursor due to Slint's default focus retention on non-focusable click targets.
+- **Solution**:
+  - Introduced `dummy-focus := FocusScope {}` in `AppWindow`.
+  - Bound `dummy-focus.focus()` to search input Enter (`accepted`), clear button (`xmark`), list card selection (`card-touch`), sidebar category items, star filter popover, and middle pane background clicks.
+  - Calling `dummy-focus.focus()` immediately resets `search-input.has-focus` to `false`, restoring the search box to its dormant border and appearance.
+
+### 4.5 Native macOS System Menu Bar & Comprehensive Window Control Operations
+- **Problem**: macOS running headless binaries or Slint windows lacks system-level window control menus in the system menu bar, missing native macOS window management (Fill, Center, Tiling / Half & Quarter split screens). Furthermore, menu items could become disabled or disappear when windows were minimized and reopened due to AppKit `setWindowsMenu` lifecycle resets and default menu auto-enable validation.
+- **Solution**:
+  - Implemented `setup_macos_menu_bar(lang: &str)` in `src/vibrancy.rs` using Cocoa / Objective-C runtime:
+    - **App Menu** (`lx-Index`): About, Hide (`Cmd+H`), Hide Others (`Opt+Cmd+H`), Show All, Quit (`Cmd+Q`).
+    - **Edit Menu** (`编辑` / `Edit`): Undo (`Cmd+Z`), Redo (`Cmd+Shift+Z`), Cut (`Cmd+X`), Copy (`Cmd+C`), Paste (`Cmd+V`), Select All (`Cmd+A`).
+    - **Window Menu** (`窗口` / `Window`):
+      - 最小化 / Minimize (`performMiniaturize:`, `Cmd+M`)
+      - 缩放 / Zoom (`performZoom:`)
+      - 填充屏幕 / Fill (`lxFill:` - smooth animation to active screen's `visibleFrame`)
+      - 居中窗口 / Center (`lxCenter:` - repositions active window to screen center)
+      - 移动与调整大小 / Move & Resize (Submenu):
+        - 平铺到屏幕左侧 / Left (`lxLeft:`)
+        - 平铺到屏幕右侧 / Right (`lxRight:`)
+        - 平铺到屏幕上方 / Top (`lxTop:`)
+        - 平铺到屏幕下方 / Bottom (`lxBottom:`)
+        - 左上分屏 / Top Left (`lxTopLeft:`)
+        - 右上分屏 / Top Right (`lxTopRight:`)
+        - 左下分屏 / Bottom Left (`lxBottomLeft:`)
+        - 右下分屏 / Bottom Right (`lxBottomRight:`)
+      - 进入全屏幕 / Toggle Full Screen (`toggleFullScreen:`, `Ctrl+Cmd+F`)
+      - 关闭窗口 / Close Window (`performClose:`, `Cmd+W`)
+      - 前置全部窗口 / Bring All to Front (`arrangeInFront:`)
+  - Registered dynamic Objective-C class `LxWindowActionHandler` to dispatch window sizing and positioning math with Cocoa `visibleFrame` and animated frame transitions.
+  - Implemented `validateMenuItem:` returning `true` and disabled `autoenablesItems` to ensure all menu items remain permanently active and never get grayed out when minimizing or changing focus.
+  - Automatically de-miniaturizes the window (`deminiaturize:`) if any window command is executed while minimized.
+  - Updated `scripts/package_macos.sh` to configure `CFBundleDevelopmentRegion = zh_CN` and `CFBundleLocalizations = [zh_CN, en]` in `Info.plist`.
+  - Fully internationalized (authentic Apple native Chinese & English) and updated dynamically on language switch in settings.
+
+### 4.6 Bug Fix: Projects & Tags Parameter Addition in Inspector
+- **Problem**: The project and tag input boxes in the right inspector were unclickable and could not receive text input.
+- **Root Cause**: `TextInput` was placed inside an unconstrained `HorizontalLayout` with `alignment: center`. With an empty initial text (`""`), the layout engine collapsed the `TextInput` preferred width to 0px, causing all mouse clicks to hit the unhandled parent `Rectangle`.
+- **Solution**:
+  - Removed `alignment: center` and sized `TextInput` explicitly to `x: 8px; y: 0; width: parent.width - 16px; height: parent.height;` inside a `horizontal-stretch: 1;` container.
+  - Added active focus border highlighting (`mauve` on macOS, `accent` on Windows).
+  - Allowed both Enter key and `+ Add` button to commit projects and tags directly into paper frontmatter.
+
+### 4.7 UI Refinements & Micro-Interactions (Phase 5 Polish)
+- **Search Box Full-Area Activation**: Added a transparent `TouchArea` to the search input container and gave `TextInput` `horizontal-stretch: 1;`, allowing clicks anywhere inside the search box bounds to focus the input.
+- **Font Descender Clipping Fix**: Prevented CJK/Latin font descender cutoff (letters `g`, `y`, `p`) in the Theme settings tab by assigning explicit `height: 20px; vertical-alignment: center;` to theme title elements and expanding card height to `58px`.
+- **Tag vs. Project Color Differentiation**: Differentiated projects (`teal`, 汉玉青绿 with target icon) from tags (`peach`, 陶土赭石 with `#` prefix) across both the middle document list and the right inspector.
+- **Inspector Tag Cloud Wrapping (`FlexboxLayout`)**: Converted single-column vertical tag lists into dynamic horizontal wrapping tag clouds (`FlexboxLayout { flex-wrap: wrap; spacing: 6px; }`).
+- **TagChip Delete Cross Alignment**: Replaced text glyphs (`"×"`) with symmetric vector icons (`icons/xmark.svg`) and locked outer circular badges to vertical center (`y: (parent.height - self.height) / 2;`), achieving pixel-perfect alignment with tag text.
+- **Uncatalogued PDF Prompt Banner Overflow Fix**: Restructured the uncatalogued document banner from a single unconstrained horizontal row to a 2-row `VerticalLayout` (Row 1: Title and `HudButton` aligned with `space-between`; Row 2: description text with `wrap: word-wrap;`). Removed the hardcoded `height: 60px;` to let the container dynamically size according to text wrapping, completely preventing the "新建伴生笔记" button from overflowing the inspector pane boundary.
+- **Middle Column Ingestion Banner Relocation**: Moved the uncatalogued PDF ingestion banner in the middle pane from the top of the column to directly below the Search HUD Bar and star filter row (separated by a 1px border divider), aligning with the Windows layout hierarchy and keeping the search & filter bar anchored at the top of the middle column. Corrected the star rating dropdown popover `y` offset to a fixed `50px`.
+- **Concentric Tall Titlebar (18~20pt R-radius Center) & Native Apple Fullscreen Transitions**:
+  - **Windowed Mode**: Configured `NSWindowToolbarStyleUnified (3)` and attached a transparent `NSToolbar` (with `showsBaselineSeparator = false`), natively placing the traffic lights at (19.5pt, 18~20pt) from top-left, forming an exact concentric circle with macOS window's 18~20pt corner radius (matching Safari, Finder, and System Settings). Left brand logo maintains a clean, static `padding-left: 92px` reserve spacing across all modes.
+  - **Native Frosted Fullscreen Dropdown Titlebar**: When entering fullscreen, `setTitlebarAppearsTransparent: false` is configured so that when the user moves the mouse to the top edge and the system top bar drops down, macOS renders the authentic Apple frosted glass / material blur background instead of an awkward transparent strip. Upon exiting fullscreen, `setTitlebarAppearsTransparent: true` is seamlessly restored.
+  - **Zero-Jump Unified Toolbar Retention**: The unified `NSToolbar` remains permanently attached with full 52pt metrics without being artificially detached (`setToolbar:nil`) or collapsed (`setVisible:false`). The system `NSApplicationPresentationAutoHideToolbar` presentation option natively slides the bar off-screen in fullscreen. Because window geometry is never collapsed, exiting fullscreen animates back with full 52pt tall titlebar metrics throughout the transition, completely eliminating traffic light position jumps.
+  - **Presentation Options**: Window delegate injects `window:willUseFullScreenPresentationOptions:` returning `NSApplicationPresentationAutoHideToolbar | NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationFullScreen`, ensuring clean autohiding of system chrome.
+- **Menu Bar Persistence Across Spaces & Minimizing**:
+  - Registered `NSApplicationDidBecomeActiveNotification`, `NSWindowDidBecomeKeyNotification`, and `NSWindowDidDeminiaturizeNotification` to re-assert `[NSApp setMainMenu:GLOBAL_MAIN_MENU]` whenever the app or window regains focus across virtual desktops (Spaces) or after minimizing.
+  - Explicitly configured `NSApplicationActivationPolicyRegular (0)` and preserved `NSWindowCollectionBehaviorParticipatesInCycle (32)` to ensure macOS WindowServer retains the app within Space switching cycles.
+- **Native Titlebar Double-Click (Minimize / Zoom)**:
+  - Swizzled `sendEvent:` on the window class to intercept double-click events in the top 52px Tall Titlebar header.
+  - Dynamically reads the user's macOS system preference `AppleActionOnDoubleClick` from `NSUserDefaults` (*System Settings > Desktop & Dock > Double-click a window's title bar to...*).
+  - Automatically invokes `performMiniaturize:` (if set to Minimize or default) or `performZoom:` (if set to Zoom/Maximize).
+
+---
+
+*Document version: 0.6.5 — Updated for macOS Phase 5 & cross-platform synchronization.*

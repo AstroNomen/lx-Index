@@ -41,14 +41,14 @@ component TagChip inherits Rectangle {
     callback remove();
 
     background: root.base-bg;
-    border-radius: 4px;
+    border-radius: 5px;
     border-width: 1px;
     border-color: root.border-col;
-    height: 22px;
+    height: 24px;
 
     HorizontalLayout {
         padding-left: 8px;
-        padding-right: 8px;
+        padding-right: root.removable ? 6px : 8px;
         spacing: 6px;
         alignment: center;
 
@@ -61,18 +61,20 @@ component TagChip inherits Rectangle {
         }
 
         if root.removable : Rectangle {
-            width: 12px;
-            height: 12px;
-            border-radius: 6px;
-            background: rem-touch.has-hover ? #a83232 : #8f807833;
+            width: 14px;
+            height: 14px;
+            border-radius: 7px;
+            background: rem-touch.has-hover ? #a83232 : root.text-color.transparentize(82%);
             animate background { duration: 100ms; }
+            y: (parent.height - self.height) / 2;
 
-            Text {
-                text: "×";
-                color: #ffffff;
-                font-size: 10px;
-                horizontal-alignment: center;
-                vertical-alignment: center;
+            Image {
+                source: @image-url("icons/xmark.svg");
+                width: 8px;
+                height: 8px;
+                colorize: rem-touch.has-hover ? #ffffff : root.text-color;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
             }
 
             rem-touch := TouchArea {
@@ -402,6 +404,7 @@ export component AppWindow inherits Window {
 
     in-out property <string> new-project-input: "";
     in-out property <string> new-tag-input: "";
+    in-out property <string> app-version: "v0.6.5";
 
     // Callbacks
     callback search-query-changed(string);
@@ -449,30 +452,35 @@ export component AppWindow inherits Window {
     callback switch-vault(string);
     callback save-rename-vault(string, string);
 
-    // Main App Container (Takes 100% width and height with zero sizing caps)
-    VerticalLayout {
+    dummy-focus := FocusScope {}
+
+    // ==========================================
+    // MAIN 3-COLUMN CONTINUOUS WORKSPACE
+    // Left: Sidebar HUD | Middle: Library & Search | Right: Metadata Inspector
+    // ==========================================
+    HorizontalLayout {
         padding: 0px;
         spacing: 0px;
         vertical-stretch: 1;
 
-        // ==========================================
-        // TOP HUD & NAVIGATION BAR (macOS 52pt Unified Toolbar Height)
-        // ==========================================
+        // ------------------------------------------
+        // PANE 1: LEFT SIDEBAR
+        // ------------------------------------------
         Rectangle {
-            height: 52px;
-            background: root.theme.crust;
+            width: 240px;
+            background: root.theme.mantle;
 
-            HorizontalLayout {
+            VerticalLayout {
                 padding: 0px;
                 spacing: 0px;
 
-                // Left Zone: Sits directly above Pane 1 (Sidebar, width: 240px)
+                // 1. Top Header: macOS Traffic Lights Clearance + Literary Brand Logo
                 Rectangle {
-                    width: 240px;
                     height: 52px;
+                    background: root.theme.mantle;
 
                     HorizontalLayout {
-                        // padding-left: 92px clears macOS unified traffic lights (x=19 to x=73, leaving 19px breathing space matching left window margin)
+                        // padding-left: 92px clears macOS unified traffic lights (x=19 to x=73, leaving breathing space)
                         padding-left: 92px;
                         padding-right: 12px;
                         alignment: start;
@@ -521,149 +529,9 @@ export component AppWindow inherits Window {
                     }
                 }
 
-                // Main Zone: Starts at x = 240px; Vault button's left edge aligns precisely with the Sidebar/Main divider
-                Rectangle {
-                    horizontal-stretch: 1;
-                    height: 52px;
-
-                    HorizontalLayout {
-                        padding-left: 0px;
-                        padding-right: 16px;
-                        spacing: 12px;
-                        alignment: space-between;
-
-                        // Left: Vault Selector Button & Refresh Button
-                        HorizontalLayout {
-                            spacing: 8px;
-                            alignment: start;
-
-                            // Vault Selector Button
-                            Rectangle {
-                                height: 28px;
-                                border-radius: 6px;
-                                background: vault-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
-                                border-width: 1px;
-                                border-color: root.theme.surface2;
-                                y: (parent.height - self.height) / 2;
-
-                                vault-btn := TouchArea {
-                                    clicked => { root.open-settings-tab(0); }
-                                    mouse-cursor: pointer;
-                                }
-
-                                HorizontalLayout {
-                                    spacing: 6px;
-                                    padding-left: 10px;
-                                    padding-right: 10px;
-                                    alignment: start;
-
-                                    Image {
-                                        source: @image-url("icons/folder.svg");
-                                        width: 14px;
-                                        height: 14px;
-                                        colorize: root.theme.mauve;
-                                        y: (parent.height - self.height) / 2;
-                                    }
-
-                                    Text {
-                                        text: root.vault-name;
-                                        color: root.theme.text;
-                                        font-size: 12px;
-                                        font-weight: 600;
-                                        vertical-alignment: center;
-                                    }
-                                }
-                            }
-
-                            // Reload Button
-                            Rectangle {
-                                width: 28px;
-                                height: 28px;
-                                border-radius: 6px;
-                                background: reload-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
-                                border-width: 1px;
-                                border-color: root.theme.surface2;
-                                y: (parent.height - self.height) / 2;
-
-                                reload-btn := TouchArea {
-                                    clicked => { root.refresh-vault(); }
-                                    mouse-cursor: pointer;
-                                }
-
-                                Image {
-                                    source: @image-url("icons/arrow-path.svg");
-                                    width: 13px;
-                                    height: 13px;
-                                    colorize: root.theme.subtext1;
-                                    x: (parent.width - self.width) / 2;
-                                    y: (parent.height - self.height) / 2;
-                                }
-                            }
-                        }
-
-                        // Right Side: Clean Status info & Settings gear button
-                        HorizontalLayout {
-                            spacing: 12px;
-                            alignment: end;
-
-                            Text {
-                                text: root.status-bar-text;
-                                color: root.theme.subtext0;
-                                font-size: 12px;
-                                vertical-alignment: center;
-                            }
-
-                            // Settings Gear Button
-                            Rectangle {
-                                width: 28px;
-                                height: 28px;
-                                border-radius: 6px;
-                                background: settings-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
-                                border-width: 1px;
-                                border-color: root.theme.surface2;
-                                y: (parent.height - self.height) / 2;
-
-                                settings-btn := TouchArea {
-                                    clicked => { root.open-settings(); }
-                                    mouse-cursor: pointer;
-                                }
-
-                                Image {
-                                    source: @image-url("icons/gear.svg");
-                                    width: 14px;
-                                    height: 14px;
-                                    colorize: root.theme.subtext1;
-                                    x: (parent.width - self.width) / 2;
-                                    y: (parent.height - self.height) / 2;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Top divider
-        Rectangle {
-            height: 1px;
-            background: root.theme.surface0;
-        }
-
-        // ==========================================
-        // MAIN 3-PANE BODY
-        // ==========================================
-        HorizontalLayout {
-            spacing: 0px;
-            vertical-stretch: 1;
-
-            // ------------------------------------------
-            // PANE 1: SIDEBAR
-            // ------------------------------------------
-            Rectangle {
-                width: 240px;
-                background: root.theme.mantle;
-
+                // 2. Sidebar Navigation Scroll Area
                 Flickable {
+                    vertical-stretch: 1;
                     content-height: sidebar-layout.preferred-height;
 
                     sidebar-layout := VerticalLayout {
@@ -690,7 +558,7 @@ export component AppWindow inherits Window {
                                 is-active: root.active-perspective == "all" && root.active-field == "" && root.active-project == "";
                                 active-col: root.theme.mauve;
                                 text-col: root.theme.subtext1;
-                                clicked => { root.select-perspective("all"); }
+                                clicked => { dummy-focus.focus(); root.select-perspective("all"); }
                             }
 
                             SidebarItem {
@@ -700,7 +568,7 @@ export component AppWindow inherits Window {
                                 is-active: root.active-perspective == "unread";
                                 active-col: root.theme.blue;
                                 text-col: root.theme.subtext1;
-                                clicked => { root.select-perspective("unread"); }
+                                clicked => { dummy-focus.focus(); root.select-perspective("unread"); }
                             }
 
                             SidebarItem {
@@ -710,7 +578,7 @@ export component AppWindow inherits Window {
                                 is-active: root.active-perspective == "priority";
                                 active-col: root.theme.yellow;
                                 text-col: root.theme.subtext1;
-                                clicked => { root.select-perspective("priority"); }
+                                clicked => { dummy-focus.focus(); root.select-perspective("priority"); }
                             }
 
                             SidebarItem {
@@ -720,7 +588,7 @@ export component AppWindow inherits Window {
                                 is-active: root.active-perspective == "discarded";
                                 active-col: root.theme.discard_fg;
                                 text-col: root.theme.subtext1;
-                                clicked => { root.select-perspective("discarded"); }
+                                clicked => { dummy-focus.focus(); root.select-perspective("discarded"); }
                             }
 
                             if root.count-uncatalogued > 0 : SidebarItem {
@@ -730,7 +598,7 @@ export component AppWindow inherits Window {
                                 is-active: root.active-perspective == "uncatalogued";
                                 active-col: root.theme.peach;
                                 text-col: root.theme.peach;
-                                clicked => { root.select-perspective("uncatalogued"); }
+                                clicked => { dummy-focus.focus(); root.select-perspective("uncatalogued"); }
                             }
                         }
 
@@ -753,7 +621,7 @@ export component AppWindow inherits Window {
                                 is-active: root.active-field == field.name;
                                 active-col: root.theme.lavender;
                                 text-col: root.theme.subtext1;
-                                clicked => { root.select-field(field.name); }
+                                clicked => { dummy-focus.focus(); root.select-field(field.name); }
                             }
 
                             if root.field-categories.length == 0 : Text {
@@ -782,7 +650,7 @@ export component AppWindow inherits Window {
                                 is-active: root.active-project == proj.name;
                                 active-col: root.theme.teal;
                                 text-col: root.theme.subtext1;
-                                clicked => { root.select-project(proj.name); }
+                                clicked => { dummy-focus.focus(); root.select-project(proj.name); }
                             }
 
                             if root.project-categories.length == 0 : Text {
@@ -793,7 +661,125 @@ export component AppWindow inherits Window {
                         }
                     }
                 }
+
+                // 3. Left Column Bottom App Controls Bar
+                Rectangle {
+                    height: 48px;
+                    background: root.theme.mantle;
+
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        alignment: space-between;
+
+                        // Left Side: Folder Button + Reload Button (bottom-left)
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: start;
+
+                            // Vault Selector Button
+                            Rectangle {
+                                height: 28px;
+                                max-width: 146px;
+                                border-radius: 6px;
+                                background: vault-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
+                                border-width: 1px;
+                                border-color: root.theme.surface2;
+                                y: (parent.height - self.height) / 2;
+
+                                vault-btn := TouchArea {
+                                    clicked => {
+                                        dummy-focus.focus();
+                                        root.open-settings-tab(0);
+                                    }
+                                    mouse-cursor: pointer;
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    padding-left: 8px;
+                                    padding-right: 8px;
+                                    alignment: start;
+
+                                    Image {
+                                        source: @image-url("icons/folder.svg");
+                                        width: 14px;
+                                        height: 14px;
+                                        colorize: root.theme.mauve;
+                                        y: (parent.height - self.height) / 2;
+                                    }
+
+                                    Text {
+                                        text: root.vault-name;
+                                        color: root.theme.text;
+                                        font-size: 11px;
+                                        font-weight: 600;
+                                        vertical-alignment: center;
+                                        overflow: elide;
+                                    }
+                                }
+                            }
+
+                            // Reload Button
+                            Rectangle {
+                                width: 28px;
+                                height: 28px;
+                                border-radius: 6px;
+                                background: reload-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
+                                border-width: 1px;
+                                border-color: root.theme.surface2;
+                                y: (parent.height - self.height) / 2;
+
+                                reload-btn := TouchArea {
+                                    clicked => {
+                                        dummy-focus.focus();
+                                        root.refresh-vault();
+                                    }
+                                    mouse-cursor: pointer;
+                                }
+
+                                Image {
+                                    source: @image-url("icons/arrow-path.svg");
+                                    width: 13px;
+                                    height: 13px;
+                                    colorize: root.theme.subtext1;
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
+                        }
+
+                        // Right Side: Settings Gear Button (bottom-right of left sidebar)
+                        Rectangle {
+                            width: 28px;
+                            height: 28px;
+                            border-radius: 6px;
+                            background: settings-btn.has-hover ? root.theme.surface1 : root.theme.surface0;
+                            border-width: 1px;
+                            border-color: root.theme.surface2;
+                            y: (parent.height - self.height) / 2;
+
+                            settings-btn := TouchArea {
+                                clicked => {
+                                    dummy-focus.focus();
+                                    root.open-settings();
+                                }
+                                mouse-cursor: pointer;
+                            }
+
+                            Image {
+                                source: @image-url("icons/gear.svg");
+                                width: 14px;
+                                height: 14px;
+                                colorize: root.theme.subtext1;
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                            }
+                        }
+                    }
+                }
             }
+        }
 
             // Sidebar divider
             Rectangle {
@@ -815,62 +801,9 @@ export component AppWindow inherits Window {
                     spacing: 0px;
                     vertical-stretch: 1;
 
-                    // Ingestion Banner for Uncatalogued PDFs
-                    if root.count-uncatalogued > 0 : Rectangle {
-                        height: 38px;
-                        background: root.theme.peach.transparentize(85%);
-
-                        HorizontalLayout {
-                            padding-left: 16px;
-                            padding-right: 16px;
-                            spacing: 12px;
-                            alignment: space-between;
-
-                            HorizontalLayout {
-                                spacing: 8px;
-                                alignment: start;
-
-                                Image {
-                                    source: @image-url("icons/bolt.svg");
-                                    width: 14px;
-                                    height: 14px;
-                                    colorize: root.theme.peach;
-                                    y: (parent.height - self.height) / 2;
-                                }
-
-                                Text {
-                                    text: root.count-uncatalogued + " " + root.strings.ingestion_banner;
-                                    color: root.theme.peach;
-                                    font-size: 12px;
-                                    font-weight: 600;
-                                    vertical-alignment: center;
-                                }
-                            }
-
-                            HudButton {
-                                text: root.strings.import_all + " (" + root.count-uncatalogued + ")";
-                                width: 116px;
-                                height: 26px;
-                                base-bg: root.theme.peach.transparentize(75%);
-                                hover-bg: root.theme.peach.transparentize(60%);
-                                text-color: root.theme.peach;
-                                font-size: 11px;
-                                font-weight: 600;
-                                y: (parent.height - self.height) / 2;
-                                clicked => { root.import-all-uncatalogued(); }
-                            }
-                        }
-
-                        Rectangle {
-                            height: 1px;
-                            background: root.theme.peach.transparentize(70%);
-                            y: 37px;
-                        }
-                    }
-
                     // Search HUD Bar (Left: Search Input, Right: TreeSelect Star Filter + Reset Filters)
                     Rectangle {
-                        height: 48px;
+                        height: 52px;
                         background: root.theme.mantle;
 
                         HorizontalLayout {
@@ -891,21 +824,27 @@ export component AppWindow inherits Window {
                                 border-color: search-input.has-focus ? root.theme.mauve : root.theme.surface1;
                                 animate border-color { duration: 120ms; }
 
+                                // Full-box click activation
+                                TouchArea {
+                                    clicked => { search-input.focus(); }
+                                    mouse-cursor: text;
+                                }
+
                                 HorizontalLayout {
                                     padding-left: 8px;
                                     padding-right: 8px;
                                     spacing: 6px;
-                                    alignment: start;
 
                                     Image {
                                         source: @image-url("icons/search.svg");
                                         width: 13px;
                                         height: 13px;
-                                        colorize: root.theme.overlay1;
+                                        colorize: search-input.has-focus ? root.theme.mauve : root.theme.overlay1;
                                         y: (parent.height - self.height) / 2;
                                     }
 
                                     search-input := TextInput {
+                                        horizontal-stretch: 1;
                                         text: root.search-query;
                                         color: root.theme.text;
                                         font-size: 12px;
@@ -913,6 +852,9 @@ export component AppWindow inherits Window {
                                         edited => {
                                             root.search-query = self.text;
                                             root.search-query-changed(self.text);
+                                        }
+                                        accepted => {
+                                            dummy-focus.focus();
                                         }
                                     }
 
@@ -960,6 +902,7 @@ export component AppWindow inherits Window {
 
                                     star-tree-touch := TouchArea {
                                         clicked => {
+                                            dummy-focus.focus();
                                             root.star-filter-open = !root.star-filter-open;
                                         }
                                         mouse-cursor: pointer;
@@ -1027,9 +970,66 @@ export component AppWindow inherits Window {
                         background: root.theme.surface0;
                     }
 
+                    // Ingestion Banner for Uncatalogued PDFs
+                    if root.count-uncatalogued > 0 : Rectangle {
+                        height: 38px;
+                        background: root.theme.peach.transparentize(85%);
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            spacing: 12px;
+                            alignment: space-between;
+
+                            HorizontalLayout {
+                                spacing: 8px;
+                                alignment: start;
+
+                                Image {
+                                    source: @image-url("icons/bolt.svg");
+                                    width: 14px;
+                                    height: 14px;
+                                    colorize: root.theme.peach;
+                                    y: (parent.height - self.height) / 2;
+                                }
+
+                                Text {
+                                    text: root.count-uncatalogued + " " + root.strings.ingestion_banner;
+                                    color: root.theme.peach;
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            HudButton {
+                                text: root.strings.import_all + " (" + root.count-uncatalogued + ")";
+                                width: 116px;
+                                height: 26px;
+                                base-bg: root.theme.peach.transparentize(75%);
+                                hover-bg: root.theme.peach.transparentize(60%);
+                                text-color: root.theme.peach;
+                                font-size: 11px;
+                                font-weight: 600;
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.import-all-uncatalogued(); }
+                            }
+                        }
+
+                        Rectangle {
+                            height: 1px;
+                            background: root.theme.peach.transparentize(70%);
+                            y: 37px;
+                        }
+                    }
+
                     // Paper Items List View (Empty State or List)
                     if root.items.length == 0 : Rectangle {
                         vertical-stretch: 1;
+
+                        TouchArea {
+                            clicked => { dummy-focus.focus(); }
+                        }
 
                         VerticalLayout {
                             alignment: center;
@@ -1078,7 +1078,10 @@ export component AppWindow inherits Window {
                             }
 
                             card-touch := TouchArea {
-                                clicked => { root.select-item(idx); }
+                                clicked => {
+                                    dummy-focus.focus();
+                                    root.select-item(idx);
+                                }
                                 mouse-cursor: pointer;
                             }
 
@@ -1328,7 +1331,7 @@ export component AppWindow inherits Window {
 
                                         if item.tags_display != "" : Text {
                                             text: item.tags_display;
-                                            color: root.theme.sapphire;
+                                            color: root.theme.peach;
                                             font-size: 11px;
                                             vertical-alignment: center;
                                         }
@@ -1358,7 +1361,7 @@ export component AppWindow inherits Window {
                     // Floating Card Popover anchored below the TreeSelect button
                     Rectangle {
                         x: parent.width - 248px;
-                        y: (root.count-uncatalogued > 0 ? 38px : 0px) + 48px + 2px;
+                        y: 50px;
                         width: 236px;
                         height: 238px;
                         border-radius: 8px;
@@ -1501,6 +1504,31 @@ export component AppWindow inherits Window {
                             }
                         }
                     }
+
+                    // Divider above middle status bar
+                    Rectangle {
+                        height: 1px;
+                        background: root.theme.surface0;
+                    }
+
+                    // Middle Column Bottom: Document count status text
+                    Rectangle {
+                        height: 32px;
+                        background: root.theme.mantle;
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            alignment: center;
+
+                            Text {
+                                text: root.status-bar-text;
+                                color: root.theme.subtext0;
+                                font-size: 11px;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1568,41 +1596,42 @@ export component AppWindow inherits Window {
                             background: root.theme.peach.transparentize(85%);
                             border-width: 1px;
                             border-color: root.theme.peach.transparentize(60%);
-                            height: 60px;
 
-                            HorizontalLayout {
+                            VerticalLayout {
+                                padding-top: 10px;
+                                padding-bottom: 10px;
                                 padding-left: 12px;
                                 padding-right: 12px;
-                                spacing: 8px;
-                                alignment: space-between;
+                                spacing: 6px;
 
-                                VerticalLayout {
-                                    alignment: center;
-                                    spacing: 2px;
+                                HorizontalLayout {
+                                    alignment: space-between;
 
                                     Text {
                                         text: root.strings.uncatalogued_prompt_title;
                                         color: root.theme.peach;
                                         font-size: 12px;
                                         font-weight: 700;
+                                        vertical-alignment: center;
                                     }
-                                    Text {
-                                        text: root.strings.uncatalogued_prompt_desc;
-                                        color: root.theme.subtext1;
-                                        font-size: 10px;
+
+                                    HudButton {
+                                        text: root.strings.create_note;
+                                        width: 92px;
+                                        height: 24px;
+                                        base-bg: root.theme.peach.transparentize(70%);
+                                        text-color: root.theme.peach;
+                                        font-size: 11px;
+                                        font-weight: 600;
+                                        clicked => { root.import-selected(); }
                                     }
                                 }
 
-                                HudButton {
-                                    text: root.strings.create_note;
-                                    width: 88px;
-                                    height: 28px;
-                                    base-bg: root.theme.peach.transparentize(70%);
-                                    text-color: root.theme.peach;
-                                    font-size: 11px;
-                                    font-weight: 600;
-                                    y: (parent.height - self.height) / 2;
-                                    clicked => { root.import-selected(); }
+                                Text {
+                                    text: root.strings.uncatalogued_prompt_desc;
+                                    color: root.theme.subtext1;
+                                    font-size: 10px;
+                                    wrap: word-wrap;
                                 }
                             }
                         }
@@ -1860,29 +1889,28 @@ export component AppWindow inherits Window {
                                 spacing: 6px;
 
                                 Rectangle {
+                                    horizontal-stretch: 1;
                                     height: 30px;
                                     border-radius: 6px;
                                     background: root.theme.base;
                                     border-width: 1px;
-                                    border-color: root.theme.surface1;
+                                    border-color: proj-in.has-focus ? root.theme.mauve : root.theme.surface1;
 
-                                    HorizontalLayout {
-                                        padding-left: 8px;
-                                        padding-right: 8px;
-                                        alignment: center;
-
-                                        proj-in := TextInput {
-                                            text: root.new-project-input;
-                                            color: root.theme.text;
-                                            font-size: 12px;
-                                            vertical-alignment: center;
-                                            edited => { root.new-project-input = self.text; }
-                                            accepted => {
-                                                if self.text != "" {
-                                                    root.add-project(self.text);
-                                                    self.text = "";
-                                                    root.new-project-input = "";
-                                                }
+                                    proj-in := TextInput {
+                                        x: 8px;
+                                        y: 0px;
+                                        width: parent.width - 16px;
+                                        height: parent.height;
+                                        text: root.new-project-input;
+                                        color: root.theme.text;
+                                        font-size: 12px;
+                                        vertical-alignment: center;
+                                        edited => { root.new-project-input = self.text; }
+                                        accepted => {
+                                            if self.text != "" {
+                                                root.add-project(self.text);
+                                                self.text = "";
+                                                root.new-project-input = "";
                                             }
                                         }
                                     }
@@ -1901,20 +1929,17 @@ export component AppWindow inherits Window {
                                 }
                             }
 
-                            VerticalLayout {
+                            FlexboxLayout {
+                                flex-wrap: wrap;
                                 spacing: 6px;
 
-                                for p[p-idx] in root.inspector-projects : HorizontalLayout {
-                                    alignment: start;
-
-                                    TagChip {
-                                        text: p;
-                                        text-color: root.theme.teal;
-                                        base-bg: root.theme.teal.transparentize(88%);
-                                        border-col: root.theme.teal.transparentize(65%);
-                                        removable: true;
-                                        remove => { root.remove-project(p-idx); }
-                                    }
+                                for p[p-idx] in root.inspector-projects : TagChip {
+                                    text: p;
+                                    text-color: root.theme.teal;
+                                    base-bg: root.theme.teal.transparentize(88%);
+                                    border-col: root.theme.teal.transparentize(65%);
+                                    removable: true;
+                                    remove => { root.remove-project(p-idx); }
                                 }
                             }
                         }
@@ -1935,29 +1960,28 @@ export component AppWindow inherits Window {
                                 spacing: 6px;
 
                                 Rectangle {
+                                    horizontal-stretch: 1;
                                     height: 30px;
                                     border-radius: 6px;
                                     background: root.theme.base;
                                     border-width: 1px;
-                                    border-color: root.theme.surface1;
+                                    border-color: tag-in.has-focus ? root.theme.mauve : root.theme.surface1;
 
-                                    HorizontalLayout {
-                                        padding-left: 8px;
-                                        padding-right: 8px;
-                                        alignment: center;
-
-                                        tag-in := TextInput {
-                                            text: root.new-tag-input;
-                                            color: root.theme.text;
-                                            font-size: 12px;
-                                            vertical-alignment: center;
-                                            edited => { root.new-tag-input = self.text; }
-                                            accepted => {
-                                                if self.text != "" {
-                                                    root.add-tag(self.text);
-                                                    self.text = "";
-                                                    root.new-tag-input = "";
-                                                }
+                                    tag-in := TextInput {
+                                        x: 8px;
+                                        y: 0px;
+                                        width: parent.width - 16px;
+                                        height: parent.height;
+                                        text: root.new-tag-input;
+                                        color: root.theme.text;
+                                        font-size: 12px;
+                                        vertical-alignment: center;
+                                        edited => { root.new-tag-input = self.text; }
+                                        accepted => {
+                                            if self.text != "" {
+                                                root.add-tag(self.text);
+                                                self.text = "";
+                                                root.new-tag-input = "";
                                             }
                                         }
                                     }
@@ -1976,20 +2000,17 @@ export component AppWindow inherits Window {
                                 }
                             }
 
-                            VerticalLayout {
+                            FlexboxLayout {
+                                flex-wrap: wrap;
                                 spacing: 6px;
 
-                                for t[t-idx] in root.inspector-tags : HorizontalLayout {
-                                    alignment: start;
-
-                                    TagChip {
-                                        text: "#" + t;
-                                        text-color: root.theme.sapphire;
-                                        base-bg: root.theme.sapphire.transparentize(88%);
-                                        border-col: root.theme.sapphire.transparentize(65%);
-                                        removable: true;
-                                        remove => { root.remove-tag(t-idx); }
-                                    }
+                                for t[t-idx] in root.inspector-tags : TagChip {
+                                    text: "#" + t;
+                                    text-color: root.theme.peach;
+                                    base-bg: root.theme.peach.transparentize(88%);
+                                    border-col: root.theme.peach.transparentize(65%);
+                                    removable: true;
+                                    remove => { root.remove-tag(t-idx); }
                                 }
                             }
                         }
@@ -2055,7 +2076,6 @@ export component AppWindow inherits Window {
                 }
             }
         }
-    }
 
     // ==========================================
     // SETTINGS & VAULT MANAGER MODAL OVERLAY
@@ -2396,7 +2416,7 @@ export component AppWindow inherits Window {
 
                     // 1. Parchment Warm
                     Rectangle {
-                        height: 54px;
+                        height: 58px;
                         border-radius: 8px;
                         background: root.current-theme-id == "parchment" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
                         border-width: 1px;
@@ -2422,6 +2442,8 @@ export component AppWindow inherits Window {
                                     color: root.theme.text;
                                     font-size: 13px;
                                     font-weight: 700;
+                                    vertical-alignment: center;
+                                    height: 20px;
                                 }
                                 Text {
                                     text: root.strings.theme_parchment_desc;
@@ -2442,7 +2464,7 @@ export component AppWindow inherits Window {
 
                     // 2. Rosé Pine Dawn
                     Rectangle {
-                        height: 54px;
+                        height: 58px;
                         border-radius: 8px;
                         background: root.current-theme-id == "rose_pine_dawn" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
                         border-width: 1px;
@@ -2468,6 +2490,8 @@ export component AppWindow inherits Window {
                                     color: root.theme.text;
                                     font-size: 13px;
                                     font-weight: 700;
+                                    vertical-alignment: center;
+                                    height: 20px;
                                 }
                                 Text {
                                     text: root.strings.theme_rose_pine_desc;
@@ -2488,7 +2512,7 @@ export component AppWindow inherits Window {
 
                     // 3. Solarized Light
                     Rectangle {
-                        height: 54px;
+                        height: 58px;
                         border-radius: 8px;
                         background: root.current-theme-id == "solarized_light" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
                         border-width: 1px;
@@ -2514,6 +2538,8 @@ export component AppWindow inherits Window {
                                     color: root.theme.text;
                                     font-size: 13px;
                                     font-weight: 700;
+                                    vertical-alignment: center;
+                                    height: 20px;
                                 }
                                 Text {
                                     text: root.strings.theme_solarized_desc;
@@ -2534,7 +2560,7 @@ export component AppWindow inherits Window {
 
                     // 4. Antique Ivory
                     Rectangle {
-                        height: 54px;
+                        height: 58px;
                         border-radius: 8px;
                         background: root.current-theme-id == "antique_ivory" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
                         border-width: 1px;
@@ -2560,6 +2586,8 @@ export component AppWindow inherits Window {
                                     color: root.theme.text;
                                     font-size: 13px;
                                     font-weight: 700;
+                                    vertical-alignment: center;
+                                    height: 20px;
                                 }
                                 Text {
                                     text: root.strings.theme_ivory_desc;
@@ -2580,7 +2608,7 @@ export component AppWindow inherits Window {
 
                     // 5. Catppuccin Latte
                     Rectangle {
-                        height: 54px;
+                        height: 58px;
                         border-radius: 8px;
                         background: root.current-theme-id == "catppuccin_latte" ? root.theme.mauve.transparentize(90%) : root.theme.mantle;
                         border-width: 1px;
@@ -2606,6 +2634,8 @@ export component AppWindow inherits Window {
                                     color: root.theme.text;
                                     font-size: 13px;
                                     font-weight: 700;
+                                    vertical-alignment: center;
+                                    height: 20px;
                                 }
                                 Text {
                                     text: root.strings.theme_latte_desc;
@@ -2776,7 +2806,7 @@ export component AppWindow inherits Window {
                                             padding-right: 6px;
 
                                             Text {
-                                                text: "v0.5.0 Beta";
+                                                text: root.app-version;
                                                 color: root.theme.mauve;
                                                 font-size: 10px;
                                                 font-weight: 700;

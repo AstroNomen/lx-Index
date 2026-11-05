@@ -503,6 +503,7 @@ export component AppWindow inherits Window {
 
     in-out property <string> new-project-input: "";
     in-out property <string> new-tag-input: "";
+    in-out property <string> app-version: "v0.6.5";
 
     // Window Control Callbacks (Frameless Metro Window)
     callback window-drag();
@@ -1897,24 +1898,23 @@ export component AppWindow inherits Window {
                                 background: root.theme.base;
                                 border-radius: 2px;
                                 border-width: 1px;
-                                border-color: root.theme.surface2;
+                                border-color: proj-in.has-focus ? root.theme.mauve : root.theme.surface2;
 
-                                HorizontalLayout {
-                                    padding-left: 6px;
-                                    padding-right: 6px;
-
-                                    proj-in := TextInput {
-                                        text: root.new-project-input;
-                                        color: root.theme.text;
-                                        font-size: 11px;
-                                        vertical-alignment: center;
-                                        edited => { root.new-project-input = self.text; }
-                                        accepted => {
-                                            if self.text != "" {
-                                                root.add-project(self.text);
-                                                self.text = "";
-                                                root.new-project-input = "";
-                                            }
+                                proj-in := TextInput {
+                                    x: 6px;
+                                    y: 0px;
+                                    width: parent.width - 12px;
+                                    height: parent.height;
+                                    text: root.new-project-input;
+                                    color: root.theme.text;
+                                    font-size: 11px;
+                                    vertical-alignment: center;
+                                    edited => { root.new-project-input = self.text; }
+                                    accepted => {
+                                        if self.text != "" {
+                                            root.add-project(self.text);
+                                            self.text = "";
+                                            root.new-project-input = "";
                                         }
                                     }
                                 }
@@ -1954,24 +1954,23 @@ export component AppWindow inherits Window {
                                 background: root.theme.base;
                                 border-radius: 2px;
                                 border-width: 1px;
-                                border-color: root.theme.surface2;
+                                border-color: tag-in.has-focus ? root.theme.accent : root.theme.surface2;
 
-                                HorizontalLayout {
-                                    padding-left: 6px;
-                                    padding-right: 6px;
-
-                                    tag-in := TextInput {
-                                        text: root.new-tag-input;
-                                        color: root.theme.text;
-                                        font-size: 11px;
-                                        vertical-alignment: center;
-                                        edited => { root.new-tag-input = self.text; }
-                                        accepted => {
-                                            if self.text != "" {
-                                                root.add-tag(self.text);
-                                                self.text = "";
-                                                root.new-tag-input = "";
-                                            }
+                                tag-in := TextInput {
+                                    x: 6px;
+                                    y: 0px;
+                                    width: parent.width - 12px;
+                                    height: parent.height;
+                                    text: root.new-tag-input;
+                                    color: root.theme.text;
+                                    font-size: 11px;
+                                    vertical-alignment: center;
+                                    edited => { root.new-tag-input = self.text; }
+                                    accepted => {
+                                        if self.text != "" {
+                                            root.add-tag(self.text);
+                                            self.text = "";
+                                            root.new-tag-input = "";
                                         }
                                     }
                                 }
@@ -2746,7 +2745,7 @@ export component AppWindow inherits Window {
                                                         padding-left: 6px;
                                                         padding-right: 6px;
                                                         Text {
-                                                            text: "v0.6.0";
+                                                            text: root.app-version;
                                                             font-size: 11px;
                                                             font-weight: 700;
                                                             color: root.theme.accent;
