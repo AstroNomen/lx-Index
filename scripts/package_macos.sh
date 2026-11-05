@@ -10,7 +10,7 @@ RELEASE_BIN="${PROJECT_ROOT}/target/release/lx-index"
 DIST_DIR="${PROJECT_ROOT}/target/release/bundle/osx"
 APP_NAME="lx Index.app"
 APP_DIR="${DIST_DIR}/${APP_NAME}"
-DMG_PATH="${PROJECT_ROOT}/target/release/lx-index-0.5.0-macOS.dmg"
+DMG_PATH="${PROJECT_ROOT}/target/release/lx-index-0.6.0-macOS.dmg"
 
 # 1. Ensure binary exists
 if [[ ! -f "${RELEASE_BIN}" ]]; then
@@ -51,7 +51,7 @@ cat > "${APP_DIR}/Contents/Info.plist" << 'EOF'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.5.0</string>
+    <string>0.6.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
