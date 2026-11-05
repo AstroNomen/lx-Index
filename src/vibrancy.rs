@@ -314,102 +314,6 @@ unsafe extern "C" fn action_validate_menu_item(
 }
 
 #[cfg(target_os = "macos")]
-unsafe extern "C" fn on_window_will_enter_fullscreen(
-    _this: *mut std::ffi::c_void,
-    _cmd: *mut std::ffi::c_void,
-    notification: *mut std::ffi::c_void,
-) {
-    let sel_object = sel_registerName(b"object\0".as_ptr() as *const _);
-    let msg_send_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
-        std::mem::transmute(objc_msgSend.as_ptr());
-    let win = if !notification.is_null() {
-        msg_send_obj(notification, sel_object as _)
-    } else {
-        MAIN_WINDOW
-    };
-    if !win.is_null() {
-        // In fullscreen, set titlebarAppearsTransparent = false so that when the top bar
-        // drops down on hover, it renders the authentic native Apple frosted glass/material background!
-        let sel_set_titlebar_transparent = sel_registerName(b"setTitlebarAppearsTransparent:\0".as_ptr() as *const _);
-        let msg_send_bool: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, bool) =
-            std::mem::transmute(objc_msgSend.as_ptr());
-        msg_send_bool(win, sel_set_titlebar_transparent as _, false);
-    }
-}
-
-#[cfg(target_os = "macos")]
-unsafe extern "C" fn on_window_will_exit_fullscreen(
-    _this: *mut std::ffi::c_void,
-    _cmd: *mut std::ffi::c_void,
-    notification: *mut std::ffi::c_void,
-) {
-    let sel_object = sel_registerName(b"object\0".as_ptr() as *const _);
-    let msg_send_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
-        std::mem::transmute(objc_msgSend.as_ptr());
-    let win = if !notification.is_null() {
-        msg_send_obj(notification, sel_object as _)
-    } else {
-        MAIN_WINDOW
-    };
-    if !win.is_null() {
-        // Restore titlebarAppearsTransparent = true before exit animation starts
-        let sel_set_titlebar_transparent = sel_registerName(b"setTitlebarAppearsTransparent:\0".as_ptr() as *const _);
-        let msg_send_bool: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, bool) =
-            std::mem::transmute(objc_msgSend.as_ptr());
-        msg_send_bool(win, sel_set_titlebar_transparent as _, true);
-
-        let tb = get_or_create_toolbar();
-        if !tb.is_null() {
-            let sel_set_toolbar = sel_registerName(b"setToolbar:\0".as_ptr() as *const _);
-            let msg_send_set_tb: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, *mut std::ffi::c_void) =
-                std::mem::transmute(objc_msgSend.as_ptr());
-            msg_send_set_tb(win, sel_set_toolbar as _, tb);
-
-            let sel_set_toolbar_style = sel_registerName(b"setToolbarStyle:\0".as_ptr() as *const _);
-            let msg_send_usize: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, usize) =
-                std::mem::transmute(objc_msgSend.as_ptr());
-            msg_send_usize(win, sel_set_toolbar_style as _, 3); // Unified (3)
-        }
-    }
-}
-
-#[cfg(target_os = "macos")]
-unsafe extern "C" fn on_window_did_exit_fullscreen(
-    _this: *mut std::ffi::c_void,
-    _cmd: *mut std::ffi::c_void,
-    notification: *mut std::ffi::c_void,
-) {
-    let sel_object = sel_registerName(b"object\0".as_ptr() as *const _);
-    let msg_send_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
-        std::mem::transmute(objc_msgSend.as_ptr());
-    let win = if !notification.is_null() {
-        msg_send_obj(notification, sel_object as _)
-    } else {
-        MAIN_WINDOW
-    };
-    if !win.is_null() {
-        // Ensure transparent titlebar and unified toolbar style are locked
-        let sel_set_titlebar_transparent = sel_registerName(b"setTitlebarAppearsTransparent:\0".as_ptr() as *const _);
-        let msg_send_bool: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, bool) =
-            std::mem::transmute(objc_msgSend.as_ptr());
-        msg_send_bool(win, sel_set_titlebar_transparent as _, true);
-
-        let tb = get_or_create_toolbar();
-        if !tb.is_null() {
-            let sel_set_toolbar = sel_registerName(b"setToolbar:\0".as_ptr() as *const _);
-            let msg_send_set_tb: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, *mut std::ffi::c_void) =
-                std::mem::transmute(objc_msgSend.as_ptr());
-            msg_send_set_tb(win, sel_set_toolbar as _, tb);
-
-            let sel_set_toolbar_style = sel_registerName(b"setToolbarStyle:\0".as_ptr() as *const _);
-            let msg_send_usize: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, usize) =
-                std::mem::transmute(objc_msgSend.as_ptr());
-            msg_send_usize(win, sel_set_toolbar_style as _, 3); // Unified (3)
-        }
-    }
-}
-
-#[cfg(target_os = "macos")]
 unsafe extern "C" fn on_app_did_become_active(
     _this: *mut std::ffi::c_void,
     _cmd: *mut std::ffi::c_void,
@@ -444,7 +348,7 @@ unsafe fn get_or_create_action_handler() -> *mut std::ffi::c_void {
         cls = objc_allocateClassPair(superclass, class_name, 0);
         if !cls.is_null() {
             let types = b"v@:@\0".as_ptr() as *const _;
-            let methods: [(&[u8], unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void)); 14] = [
+            let methods: [(&[u8], unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void)); 11] = [
                 (b"lxCenter:\0", action_center),
                 (b"lxFill:\0", action_fill),
                 (b"lxLeft:\0", action_left),
@@ -455,9 +359,6 @@ unsafe fn get_or_create_action_handler() -> *mut std::ffi::c_void {
                 (b"lxTopRight:\0", action_top_right),
                 (b"lxBottomLeft:\0", action_bottom_left),
                 (b"lxBottomRight:\0", action_bottom_right),
-                (b"windowWillEnterFullScreen:\0", on_window_will_enter_fullscreen),
-                (b"windowWillExitFullScreen:\0", on_window_will_exit_fullscreen),
-                (b"windowDidExitFullScreen:\0", on_window_did_exit_fullscreen),
                 (b"appDidBecomeActive:\0", on_app_did_become_active),
             ];
             for (sel_name, imp) in methods {
@@ -482,7 +383,7 @@ unsafe fn get_or_create_action_handler() -> *mut std::ffi::c_void {
 }
 
 #[cfg(target_os = "macos")]
-unsafe fn register_fullscreen_notifications(window: *mut std::ffi::c_void) {
+unsafe fn register_focus_notifications(window: *mut std::ffi::c_void) {
     if NOTIFICATIONS_REGISTERED.swap(true, std::sync::atomic::Ordering::SeqCst) {
         return;
     }
@@ -507,20 +408,7 @@ unsafe fn register_fullscreen_notifications(window: *mut std::ffi::c_void) {
     let msg_send_add_obs: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, *mut std::ffi::c_void, *const std::ffi::c_void, *mut std::ffi::c_void, *mut std::ffi::c_void) =
         std::mem::transmute(objc_msgSend.as_ptr());
 
-    // 1. Fullscreen enter and exit transitions
-    let will_enter_name = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"NSWindowWillEnterFullScreenNotification\0".as_ptr() as _);
-    let will_exit_name = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"NSWindowWillExitFullScreenNotification\0".as_ptr() as _);
-    let did_exit_name = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"NSWindowDidExitFullScreenNotification\0".as_ptr() as _);
-
-    let sel_will_enter = sel_registerName(b"windowWillEnterFullScreen:\0".as_ptr() as *const _);
-    let sel_will_exit = sel_registerName(b"windowWillExitFullScreen:\0".as_ptr() as *const _);
-    let sel_did_exit = sel_registerName(b"windowDidExitFullScreen:\0".as_ptr() as *const _);
-
-    msg_send_add_obs(center, sel_add_observer as _, handler, sel_will_enter as _, will_enter_name, window);
-    msg_send_add_obs(center, sel_add_observer as _, handler, sel_will_exit as _, will_exit_name, window);
-    msg_send_add_obs(center, sel_add_observer as _, handler, sel_did_exit as _, did_exit_name, window);
-
-    // 2. Lifecycle focus notifications: App activation, Window key, and Deminiaturize
+    // Lifecycle focus notifications: App activation, Window key, and Deminiaturize
     let sel_app_active = sel_registerName(b"appDidBecomeActive:\0".as_ptr() as *const _);
     let app_active_name = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"NSApplicationDidBecomeActiveNotification\0".as_ptr() as _);
     let win_key_name = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"NSWindowDidBecomeKeyNotification\0".as_ptr() as _);
@@ -758,15 +646,15 @@ unsafe fn apply_vibrancy_to_nswindow(window: *mut std::ffi::c_void) {
     // titleVisibility = NSWindowTitleHidden (1)
     msg_send_usize_set(window, sel_set_title_visibility as _, 1);
 
-    // Empty title so no system text is rendered in title area
+    // Set window title to "lx Index" (used in fullscreen centered titlebar)
     let ns_str_cls = objc_getClass(b"NSString\0".as_ptr() as *const _);
     let sel_str_with_utf8 = sel_registerName(b"stringWithUTF8String:\0".as_ptr() as *const _);
     let msg_send_str: unsafe extern "C" fn(*const std::ffi::c_void, *const std::ffi::c_void, *const std::ffi::c_char) -> *mut std::ffi::c_void =
         std::mem::transmute(objc_msgSend.as_ptr());
-    let empty_ns_str = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"\0".as_ptr() as _);
+    let title_ns_str = msg_send_str(ns_str_cls as _, sel_str_with_utf8 as _, b"lx Index\0".as_ptr() as _);
     let msg_send_ptr: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, *mut std::ffi::c_void) =
         std::mem::transmute(objc_msgSend.as_ptr());
-    msg_send_ptr(window, sel_set_title as _, empty_ns_str);
+    msg_send_ptr(window, sel_set_title as _, title_ns_str);
 
     // titlebarSeparatorStyle = NSTitlebarSeparatorStyleNone (0)
     msg_send_usize_set(window, sel_set_separator_style as _, 0);
@@ -790,8 +678,8 @@ unsafe fn apply_vibrancy_to_nswindow(window: *mut std::ffi::c_void) {
         msg_send_set_tb(window, sel_set_toolbar as _, toolbar);
     }
 
-    // Register observers for fullscreen enter/exit and app activation
-    register_fullscreen_notifications(window);
+    // Register observers for lifecycle focus and app activation across Spaces
+    register_focus_notifications(window);
 
     // Ensure window delegate implements window:willUseFullScreenPresentationOptions: to autohide chrome in fullscreen
     let sel_delegate = sel_registerName(b"delegate\0".as_ptr() as *const _);
