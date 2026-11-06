@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -24,6 +24,8 @@ pub struct AppState {
     pub active_perspective: String, // "all", "unread", "priority", "discarded", "uncatalogued"
     pub active_field: Option<String>,
     pub active_project: Option<String>,
+    pub active_tag: Option<String>,
+    pub tag_sort_mode: i32, // 0: By Count (descending), 1: Alphabetical (A-Z)
     pub filter_stars: Vec<u8>, // empty = all stars; multi-select list e.g. [5, 4]
     pub selected_id: Option<String>,
     pub theme: AppTheme,
@@ -50,6 +52,8 @@ impl AppState {
             active_perspective: "all".to_string(),
             active_field: None,
             active_project: None,
+            active_tag: None,
+            tag_sort_mode: 0,
             filter_stars: Vec::new(),
             selected_id: None,
             theme,
@@ -93,6 +97,7 @@ impl AppState {
 
         self.vault_path = Some(path_buf);
         self.library = scan;
+        self.active_tag = None;
         self.save_current_config();
         Ok(())
     }
@@ -130,6 +135,7 @@ impl AppState {
                     self.active_perspective = "all".to_string();
                     self.active_field = None;
                     self.active_project = None;
+                    self.active_tag = None;
                     self.filter_stars.clear();
                 }
             }
@@ -236,6 +242,13 @@ impl AppState {
                 // Project filter
                 if let Some(ref proj) = self.active_project {
                     if !item.metadata.projects.iter().any(|p| p.eq_ignore_ascii_case(proj)) {
+                        return false;
+                    }
+                }
+
+                // Tag filter
+                if let Some(ref tag) = self.active_tag {
+                    if !item.metadata.tags.iter().any(|t| t.eq_ignore_ascii_case(tag)) {
                         return false;
                     }
                 }
@@ -391,6 +404,73 @@ impl AppState {
             }
         }
         map.into_iter().collect()
+    }
+
+    /// Computes item counts per tag, sorted according to `tag_sort_mode`:
+    /// - 0: By frequency (count descending, then alphabetical)
+    /// - 1: By alphabetical order (A-Z)
+    pub fn tag_counts(&self) -> Vec<(String, usize)> {
+        let mut map: HashMap<String, usize> = HashMap::new();
+        for item in &self.library.items {
+            if item.metadata.status != PaperStatus::Discarded {
+                for t in &item.metadata.tags {
+                    *map.entry(t.clone()).or_insert(0) += 1;
+                }
+            }
+        }
+        let mut list: Vec<(String, usize)> = map.into_iter().collect();
+        if self.tag_sort_mode == 1 {
+            list.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+        } else {
+            list.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase())));
+        }
+        list
+    }
+
+    /// Toggles or sets the active tag filter.
+    pub fn set_active_tag(&mut self, tag: Option<String>) {
+        if self.active_tag == tag {
+            self.active_tag = None;
+        } else {
+            self.active_tag = tag;
+        }
+    }
+
+    /// Returns auto-suggest candidate tags matching `prefix`, excluding `current_tags`,
+    /// ordered with prefix matches first, then frequency descending.
+    pub fn get_tag_suggestions(&self, prefix: &str, current_tags: &[String], limit: usize) -> Vec<String> {
+        let p = prefix.trim().to_lowercase();
+        if p.is_empty() {
+            return Vec::new();
+        }
+
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        for item in &self.library.items {
+            for t in &item.metadata.tags {
+                *counts.entry(t.clone()).or_insert(0) += 1;
+            }
+        }
+
+        let mut candidates: Vec<(String, usize)> = counts
+            .into_iter()
+            .filter(|(tag, _)| {
+                let lower = tag.to_lowercase();
+                (lower.starts_with(&p) || lower.contains(&p))
+                    && !current_tags.iter().any(|ct| ct.eq_ignore_ascii_case(tag))
+            })
+            .collect();
+
+        candidates.sort_by(|a, b| {
+            let a_starts = a.0.to_lowercase().starts_with(&p);
+            let b_starts = b.0.to_lowercase().starts_with(&p);
+            match (a_starts, b_starts) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => b.1.cmp(&a.1).then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase())),
+            }
+        });
+
+        candidates.into_iter().take(limit).map(|(tag, _)| tag).collect()
     }
 
     /// Returns a reference to the selected paper item.
@@ -637,6 +717,8 @@ tags:
             active_perspective: "all".to_string(),
             active_field: None,
             active_project: None,
+            active_tag: None,
+            tag_sort_mode: 0,
             filter_stars: Vec::new(),
             selected_id: None,
             theme: AppTheme::default(),
@@ -758,6 +840,8 @@ tags:
             active_perspective: "all".to_string(),
             active_field: None,
             active_project: None,
+            active_tag: None,
+            tag_sort_mode: 0,
             filter_stars: Vec::new(),
             selected_id: None,
             theme: AppTheme::default(),
@@ -811,6 +895,105 @@ tags:
         assert!(state.rename_vault(&vault_path_str, "My Custom Photonics Vault"));
         let updated_record = state.registered_vaults.iter().find(|v| v.path == vault_path_str).unwrap();
         assert_eq!(updated_record.name, "My Custom Photonics Vault");
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_tag_aggregation_suggestions_and_filter() {
+        let temp_dir = std::env::temp_dir().join("lx_tag_test_vault");
+        let _ = fs::remove_dir_all(&temp_dir);
+
+        let field = temp_dir.join("Physics");
+        let notes_dir = field.join("notes");
+        fs::create_dir_all(&notes_dir).unwrap();
+
+        fs::write(
+            notes_dir.join("Paper1.md"),
+            r#"---
+title: "Paper One"
+year: 2026
+authors:
+  - "Author A"
+field: "Physics"
+status: unread
+tags:
+  - "laser"
+  - "quantum"
+---
+# P1
+"#,
+        )
+        .unwrap();
+
+        fs::write(
+            notes_dir.join("Paper2.md"),
+            r#"---
+title: "Paper Two"
+year: 2026
+authors:
+  - "Author B"
+field: "Physics"
+status: unread
+tags:
+  - "laser"
+  - "optics"
+---
+# P2
+"#,
+        )
+        .unwrap();
+
+        let mut state = AppState {
+            vault_path: None,
+            library: LibraryScanResult::default(),
+            search_query: String::new(),
+            active_perspective: "all".to_string(),
+            active_field: None,
+            active_project: None,
+            active_tag: None,
+            tag_sort_mode: 0,
+            filter_stars: Vec::new(),
+            selected_id: None,
+            theme: AppTheme::default(),
+            language: "zh".to_string(),
+            registered_vaults: Vec::new(),
+            show_settings: false,
+            settings_tab: 0,
+        };
+
+        state.load_vault(&temp_dir).unwrap();
+        assert_eq!(state.library.items.len(), 2);
+
+        // 1. Tag counts by frequency (tag_sort_mode = 0)
+        let counts_freq = state.tag_counts();
+        assert_eq!(counts_freq[0].0, "laser");
+        assert_eq!(counts_freq[0].1, 2);
+
+        // 2. Tag counts by alphabetical (tag_sort_mode = 1)
+        state.tag_sort_mode = 1;
+        let counts_alpha = state.tag_counts();
+        let names_alpha: Vec<String> = counts_alpha.into_iter().map(|(n, _)| n).collect();
+        assert_eq!(names_alpha, vec!["laser", "optics", "quantum"]);
+
+        // 3. Auto-suggest
+        let suggs = state.get_tag_suggestions("las", &[], 5);
+        assert_eq!(suggs, vec!["laser"]);
+
+        // Exclude current tags
+        let suggs_excluded = state.get_tag_suggestions("las", &["laser".to_string()], 5);
+        assert!(suggs_excluded.is_empty());
+
+        // 4. Tag filtering
+        state.set_active_tag(Some("quantum".to_string()));
+        let filtered = state.filtered_items();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].metadata.title, "Paper One");
+
+        // Toggle tag filter off
+        state.set_active_tag(Some("quantum".to_string()));
+        assert_eq!(state.active_tag, None);
+        assert_eq!(state.filtered_items().len(), 2);
 
         let _ = fs::remove_dir_all(&temp_dir);
     }

@@ -299,4 +299,98 @@ This section documents the macOS platform-specific UI refinements and shared cod
 
 ---
 
-*Document version: 0.8.0 — Updated for macOS Phase 5 & cross-platform synchronization.*
+## 5. [2026-11-06] Tag Aggregation, Suggestions & Explorer Integration (v0.8.0)
+
+This section documents the introduction of the Tag system: backend frequency aggregation, real-time auto-suggestions, and bottom bar flyout exploration.
+
+### 5.1 UX & Information Architecture Philosophy
+1. **Separation from Primary Hierarchies**:
+   - In literature management, **Field (领域)** is top-level academic taxonomy and **Project (项目)** is contextual task tracking. These remain primary navigation trees in the left sidebar.
+   - **Tags (标签)** are granular, flat, and numerous (often dozens or hundreds per vault). Embedding them directly as permanent sidebar trees would bloat the sidebar and disrupt visual hierarchy.
+   - Therefore, Tag exploration is implemented via a lightweight button at the bottom of the left sidebar, which summons a non-intrusive Flyout / Popover panel on demand.
+2. **Preventing Tag Fragmentation & Typos (Auto-Suggest)**:
+   - Without suggestions, users frequently create slightly mismatched tags (e.g. `laser`, `Lasers`, `laser-source`).
+   - Typing in the inspector now displays real-time auto-complete candidates derived from the backend's known tag frequency list, prioritizing prefix matches and higher-frequency usage.
+3. **UI Consistency & Asset Reuse**:
+   - The tag display in the flyout reuses the existing `TagChip` / `MetroTagChip` styling from the right inspector, replacing the deletion cross (`xmark`) with a literature count badge (`[count]`).
+   - Added unified vector icon `ui/icons/tag.svg` (24x24 Lucide stroke style) for dual-platform reuse.
+
+---
+
+### 5.2 Shared Rust Core Changes (`src/state.rs`, `src/main.rs`)
+1. **State Management (`src/state.rs`)**:
+   - `pub active_tag: Option<String>`: Tracks active tag filter. Integrated into `filtered_items()` so clicking any tag in the explorer instantly filters the middle literature stream. Toggling the same tag clears the filter.
+   - `pub tag_sort_mode: i32`: `0` for Frequency Descending (count descending, then alphabetical), `1` for Alphabetical (A-Z).
+   - `pub fn tag_counts(&self) -> Vec<(String, usize)>`: Aggregates tags across all non-discarded papers and sorts according to `tag_sort_mode`.
+   - `pub fn get_tag_suggestions(&self, prefix: &str, current_tags: &[String], limit: usize) -> Vec<String>`: Returns candidates matching the prefix (case-insensitive), excluding tags already present on the selected paper.
+   - Added unit test `test_tag_aggregation_suggestions_and_filter`.
+2. **UI Synchronization (`sync_ui` in `src/main.rs`)**:
+   - Binds `tag_counts()` to Slint's `tag-categories` model using `SlintCategoryItem { name, count }`.
+   - Binds `ui.set_active_tag(...)` and `ui.set_tag_sort_mode(...)`.
+   - Clears `active_tag` when resetting filters or switching vaults.
+3. **Registered Callbacks (`src/main.rs`)**:
+   - `on_select_tag`: Toggles active tag filter.
+   - `on_toggle_tag_flyout`: Toggles flyout visibility.
+   - `on_set_tag_sort_mode`: Updates sort mode (`0` vs `1`) and pushes re-sorted tag list.
+   - `on_filter_tag_suggestions`: Computes candidates matching typed prefix and sets `show_tag_suggestions`.
+   - `on_apply_tag_suggestion`: Commits selected candidate directly into paper frontmatter and closes suggestions.
+
+---
+
+### 5.3 Slint Property & Callback Parity (All UI Definitions)
+The following properties and callbacks have been added to `ui/appwindow_windows.slint`, `ui/appwindow_macos.slint`, and `ui/appwindow.slint`:
+```slint
+// Properties
+in-out property <[SlintCategoryItem]> tag-categories: [];
+in-out property <string> active-tag: "";
+in-out property <bool> show-tag-flyout: false;
+in-out property <int> tag-sort-mode: 0; // 0: By Count, 1: By Alphabetical
+in-out property <[string]> tag-suggestions: [];
+in-out property <bool> show-tag-suggestions: false;
+
+// Callbacks
+callback select-tag(string);
+callback toggle-tag-flyout();
+callback set-tag-sort-mode(int);
+callback filter-tag-suggestions(string);
+callback apply-tag-suggestion(string);
+```
+
+---
+
+### 5.4 Windows Metro UI Implementation (`ui/appwindow_windows.slint`)
+1. **Metro App Bar Button**:
+   - Added circular `MetroAppBarButton` ("标签" / "Tags") to the bottom of Pane 1, styled consistently alongside Vault Switcher, Sync, and Settings.
+   - Highlights with `accent` border and fill when active or when the flyout is open.
+2. **Tag Flyout Popover**:
+   - Floats above the App Bar (`y: parent.height - self.height - 56px`, `height: 280px`).
+   - Dismisses automatically on outside click via a transparent backdrop above the App Bar.
+   - Header displays total tag count and sort mode pills (`按频次` / `Freq` vs `按字母` / `A-Z`).
+   - If an active filter is selected, displays an active filter banner with a one-click dismiss button.
+   - Scrollable `ListView` containing `MetroTagChip` with literature count badges. Clicking any tag toggles filtering in the middle literature list.
+3. **Enhanced `MetroTagChip`**:
+   - Added `has-count: bool`, `count: int`, `clickable: bool`, and `callback clicked()`.
+   - When `has-count` is true, displays a pill-shaped count badge (`root.text-color.transparentize(82%)`).
+4. **Inspector Auto-Suggest Dropdown**:
+   - Tag input box (`tag-in`) triggers `filter-tag-suggestions(self.text)` on edit.
+   - Popover list floats directly beneath the input box showing top matching candidates.
+   - Clicking any candidate or pressing Enter applies the tag and closes suggestions.
+   - Clicking anywhere outside in Pane 1, Pane 2, or Pane 3 dismisses suggestions.
+
+---
+
+### 5.5 Guidelines for macOS Implementation
+When wiring the macOS UI in `ui/appwindow_macos.slint`:
+1. **Left Sidebar Button**:
+   - Place a Tag button in the bottom control bar alongside Vault and Reload buttons (`ui/icons/tag.svg`), preserving the Apple HIG aesthetics.
+2. **Popover Panel**:
+   - Use a floating card with `root.theme.mantle` background, subtle border, and rounded corners (`border-radius: 8px`).
+   - Display sort switch controls (segmented control or pill buttons) and bind to `root.set-tag-sort-mode(mode)`.
+   - Render tag chips using `TagChip` with count badges, binding click to `root.select-tag(cat.name)`.
+3. **Inspector Auto-Suggest**:
+   - Under the tag `TextInput`, position a dropdown container when `root.show-tag-suggestions && root.tag-suggestions.length > 0`.
+   - Render suggestion rows and bind click to `root.apply-tag-suggestion(sugg)`.
+
+---
+
+*Document version: 0.8.0 — Updated for Tag Aggregation, Auto-Suggest & Dual-Platform Coordination.*

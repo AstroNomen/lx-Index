@@ -127,13 +127,22 @@ component MetroTagChip inherits Rectangle {
     in-out property <color> base-bg: #2f5d8a14;
     in-out property <color> border-col: #2f5d8a33;
     in-out property <bool> removable: false;
+    in-out property <bool> has-count: false;
+    in-out property <int> count: 0;
+    in-out property <bool> clickable: false;
     callback remove();
+    callback clicked();
 
     background: root.base-bg;
     border-radius: 2px;
     border-width: 1px;
     border-color: root.border-col;
     height: 22px;
+
+    if root.clickable : TouchArea {
+        clicked => { root.clicked(); }
+        mouse-cursor: pointer;
+    }
 
     HorizontalLayout {
         padding-left: 8px;
@@ -147,6 +156,27 @@ component MetroTagChip inherits Rectangle {
             font-size: 11px;
             font-weight: 500;
             vertical-alignment: center;
+        }
+
+        if root.has-count : Rectangle {
+            height: 14px;
+            border-radius: 7px;
+            background: root.text-color.transparentize(82%);
+            y: (parent.height - self.height) / 2;
+
+            HorizontalLayout {
+                padding-left: 5px;
+                padding-right: 5px;
+                alignment: center;
+                Text {
+                    text: root.count;
+                    font-size: 9px;
+                    font-weight: 700;
+                    color: root.text-color;
+                    vertical-alignment: center;
+                    horizontal-alignment: center;
+                }
+            }
         }
 
         if root.removable : Rectangle {
@@ -473,11 +503,17 @@ export component AppWindow inherits Window {
 
     in-out property <[SlintCategoryItem]> field-categories: [];
     in-out property <[SlintCategoryItem]> project-categories: [];
+    in-out property <[SlintCategoryItem]> tag-categories: [];
+    in-out property <string> active-tag: "";
+    in-out property <bool> show-tag-flyout: false;
+    in-out property <int> tag-sort-mode: 0; // 0: By Count, 1: By Alphabetical
+    in-out property <[string]> tag-suggestions: [];
+    in-out property <bool> show-tag-suggestions: false;
 
     in-out property <string> search-query: "";
     in-out property <bool> search-expanded: false;
     in-out property <int> left-pivot-section: 0; // 0: Perspectives, 1: Disciplines, 2: Projects
-    in-out property <bool> filter-active: root.search-query != "" || root.filter-stars-count > 0 || root.active-field != "" || root.active-project != "" || root.active-perspective != "all";
+    in-out property <bool> filter-active: root.search-query != "" || root.filter-stars-count > 0 || root.active-field != "" || root.active-project != "" || root.active-tag != "" || root.active-perspective != "all";
     in-out property <[SlintPaperItem]> items: [];
     in-out property <int> selected-index: -1;
     in-out property <string> status-bar-text: "就绪";
@@ -520,6 +556,11 @@ export component AppWindow inherits Window {
     callback clear-filter-stars();
     callback select-all-filter-stars();
     callback clear-filters();
+    callback select-tag(string);
+    callback toggle-tag-flyout();
+    callback set-tag-sort-mode(int);
+    callback filter-tag-suggestions(string);
+    callback apply-tag-suggestion(string);
     callback select-item(int);
     callback choose-vault();
     callback refresh-vault();
@@ -579,6 +620,7 @@ export component AppWindow inherits Window {
             TouchArea {
                 clicked => {
                     root.star-filter-open = false;
+                    root.show-tag-suggestions = false;
                     if root.search-query == "" { root.search-expanded = false; }
                 }
             }
@@ -979,7 +1021,21 @@ export component AppWindow inherits Window {
                             }
                         }
 
-                        // 2. Refresh App Bar Button
+                        // 2. Tag Explorer App Bar Button
+                        MetroAppBarButton {
+                            label: root.current-language == "zh" ? "标签" : "Tags";
+                            icon-src: @image-url("icons/tag.svg");
+                            icon-color: (root.show-tag-flyout || root.active-tag != "") ? root.theme.base : root.theme.text;
+                            circle-border: (root.show-tag-flyout || root.active-tag != "") ? root.theme.accent : root.theme.surface2;
+                            hover-bg: root.theme.accent;
+                            hover-icon-color: root.theme.base;
+                            is-active: root.show-tag-flyout || root.active-tag != "";
+                            clicked => {
+                                root.toggle-tag-flyout();
+                            }
+                        }
+
+                        // 3. Refresh App Bar Button
                         MetroAppBarButton {
                             label: root.current-language == "zh" ? "同步" : "Sync";
                             icon-src: @image-url("icons/arrow-path.svg");
@@ -992,7 +1048,7 @@ export component AppWindow inherits Window {
                             }
                         }
 
-                        // 3. Settings App Bar Button
+                        // 4. Settings App Bar Button
                         MetroAppBarButton {
                             label: root.current-language == "zh" ? "设置" : "Settings";
                             icon-src: @image-url("icons/gear.svg");
@@ -1002,6 +1058,183 @@ export component AppWindow inherits Window {
                             hover-icon-color: root.theme.base;
                             clicked => {
                                 root.open-settings();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Click-outside backdrop to dismiss tag flyout
+            if root.show-tag-flyout : TouchArea {
+                x: 0px;
+                y: 0px;
+                width: parent.width;
+                height: parent.height - 52px;
+                clicked => {
+                    root.show-tag-flyout = false;
+                }
+            }
+
+            // Tag Flyout Overlay (Pops up above bottom App Bar)
+            if root.show-tag-flyout : Rectangle {
+                width: parent.width - 16px;
+                height: 280px;
+                x: 8px;
+                y: parent.height - self.height - 56px;
+                background: root.theme.mantle;
+                border-radius: 2px;
+                border-width: 1px;
+                border-color: root.theme.surface2;
+
+                VerticalLayout {
+                    padding: 10px;
+                    spacing: 8px;
+
+                    // Flyout Header
+                    HorizontalLayout {
+                        alignment: space-between;
+
+                        HorizontalLayout {
+                            spacing: 4px;
+
+                            Text {
+                                text: root.current-language == "zh" ? "全部标签" : "Tags";
+                                font-size: 13px;
+                                font-weight: 700;
+                                color: root.theme.text;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: "(" + root.tag-categories.length + ")";
+                                font-size: 11px;
+                                color: root.theme.overlay1;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        // Sort Toggle Controls
+                        HorizontalLayout {
+                            spacing: 4px;
+                            // Count button
+                            Rectangle {
+                                height: 20px;
+                                border-radius: 2px;
+                                background: root.tag-sort-mode == 0 ? root.theme.accent : root.theme.surface0;
+                                TouchArea {
+                                    clicked => { root.set-tag-sort-mode(0); }
+                                    mouse-cursor: pointer;
+                                }
+                                HorizontalLayout {
+                                    padding-left: 6px;
+                                    padding-right: 6px;
+                                    alignment: center;
+                                    Text {
+                                        text: root.current-language == "zh" ? "按频次" : "Freq";
+                                        font-size: 10px;
+                                        font-weight: root.tag-sort-mode == 0 ? 700 : 400;
+                                        color: root.tag-sort-mode == 0 ? root.theme.base : root.theme.subtext1;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                            // Alphabetical button
+                            Rectangle {
+                                height: 20px;
+                                border-radius: 2px;
+                                background: root.tag-sort-mode == 1 ? root.theme.accent : root.theme.surface0;
+                                TouchArea {
+                                    clicked => { root.set-tag-sort-mode(1); }
+                                    mouse-cursor: pointer;
+                                }
+                                HorizontalLayout {
+                                    padding-left: 6px;
+                                    padding-right: 6px;
+                                    alignment: center;
+                                    Text {
+                                        text: root.current-language == "zh" ? "按字母" : "A-Z";
+                                        font-size: 10px;
+                                        font-weight: root.tag-sort-mode == 1 ? 700 : 400;
+                                        color: root.tag-sort-mode == 1 ? root.theme.base : root.theme.subtext1;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Active tag filter banner if a tag is active
+                    if root.active-tag != "" : Rectangle {
+                        height: 24px;
+                        border-radius: 2px;
+                        background: root.theme.accent.transparentize(85%);
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            padding-right: 8px;
+                            alignment: space-between;
+                            Text {
+                                text: (root.current-language == "zh" ? "当前过滤: #" : "Filtering: #") + root.active-tag;
+                                font-size: 11px;
+                                color: root.theme.accent;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                            }
+                            Rectangle {
+                                width: 14px;
+                                height: 14px;
+                                y: (parent.height - self.height) / 2;
+                                TouchArea {
+                                    clicked => { root.select-tag(root.active-tag); }
+                                    mouse-cursor: pointer;
+                                }
+                                Image {
+                                    source: @image-url("icons/win-close.svg");
+                                    width: 8px;
+                                    height: 8px;
+                                    colorize: root.theme.accent;
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
+                        }
+                    }
+
+                    // Divider
+                    Rectangle {
+                        height: 1px;
+                        background: root.theme.surface0;
+                    }
+
+                    // Tag list
+                    if root.tag-categories.length == 0 : VerticalLayout {
+                        alignment: center;
+                        vertical-stretch: 1;
+                        Text {
+                            text: root.current-language == "zh" ? "暂无标签" : "No tags found";
+                            font-size: 12px;
+                            color: root.theme.overlay1;
+                            horizontal-alignment: center;
+                        }
+                    }
+
+                    if root.tag-categories.length > 0 : ListView {
+                        vertical-stretch: 1;
+                        for cat in root.tag-categories : Rectangle {
+                            height: 28px;
+                            background: #00000000;
+                            HorizontalLayout {
+                                alignment: start;
+                                MetroTagChip {
+                                    text: "#" + cat.name;
+                                    has-count: true;
+                                    count: cat.count;
+                                    clickable: true;
+                                    text-color: root.active-tag == cat.name ? root.theme.base : root.theme.accent;
+                                    base-bg: root.active-tag == cat.name ? root.theme.accent : root.theme.accent.transparentize(88%);
+                                    border-col: root.active-tag == cat.name ? root.theme.accent : root.theme.accent.transparentize(60%);
+                                    clicked => {
+                                        root.select-tag(cat.name);
+                                    }
+                                }
                             }
                         }
                     }
@@ -1134,6 +1367,7 @@ export component AppWindow inherits Window {
                             card-touch := TouchArea {
                                 clicked => {
                                     root.star-filter-open = false;
+                                    root.show-tag-suggestions = false;
                                     if root.search-query == "" {
                                         root.search-expanded = false;
                                     }
@@ -1444,6 +1678,7 @@ export component AppWindow inherits Window {
                     height: parent.height - 52px;
                     clicked => {
                         root.star-filter-open = false;
+                        root.show-tag-suggestions = false;
                         if root.search-query == "" {
                             root.search-expanded = false;
                         }
@@ -1566,6 +1801,7 @@ export component AppWindow inherits Window {
                 TouchArea {
                     clicked => {
                         root.star-filter-open = false;
+                        root.show-tag-suggestions = false;
                         if root.search-query == "" { root.search-expanded = false; }
                     }
                 }
@@ -1947,30 +2183,84 @@ export component AppWindow inherits Window {
                                 remove => { root.remove-tag(t_idx); }
                             }
 
-                            // Add tag input
+                            // Add tag input with auto-suggest dropdown
                             Rectangle {
                                 height: 22px;
                                 width: 110px;
-                                background: root.theme.base;
-                                border-radius: 2px;
-                                border-width: 1px;
-                                border-color: tag-in.has-focus ? root.theme.accent : root.theme.surface2;
 
-                                tag-in := TextInput {
-                                    x: 6px;
-                                    y: 0px;
-                                    width: parent.width - 12px;
-                                    height: parent.height;
-                                    text: root.new-tag-input;
-                                    color: root.theme.text;
-                                    font-size: 11px;
-                                    vertical-alignment: center;
-                                    edited => { root.new-tag-input = self.text; }
-                                    accepted => {
-                                        if self.text != "" {
-                                            root.add-tag(self.text);
-                                            self.text = "";
-                                            root.new-tag-input = "";
+                                Rectangle {
+                                    width: 100%;
+                                    height: 100%;
+                                    background: root.theme.base;
+                                    border-radius: 2px;
+                                    border-width: 1px;
+                                    border-color: tag-in.has-focus ? root.theme.accent : root.theme.surface2;
+
+                                    tag-in := TextInput {
+                                        x: 6px;
+                                        y: 0px;
+                                        width: parent.width - 12px;
+                                        height: parent.height;
+                                        text: root.new-tag-input;
+                                        color: root.theme.text;
+                                        font-size: 11px;
+                                        vertical-alignment: center;
+                                        edited => {
+                                            root.new-tag-input = self.text;
+                                            root.filter-tag-suggestions(self.text);
+                                        }
+                                        accepted => {
+                                            if self.text != "" {
+                                                root.add-tag(self.text);
+                                                self.text = "";
+                                                root.new-tag-input = "";
+                                                root.show-tag-suggestions = false;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Auto-suggest dropdown popup
+                                if root.show-tag-suggestions && root.tag-suggestions.length > 0 : Rectangle {
+                                    x: 0px;
+                                    y: parent.height + 2px;
+                                    width: 140px;
+                                    z: 100;
+                                    background: root.theme.mantle;
+                                    border-radius: 2px;
+                                    border-width: 1px;
+                                    border-color: root.theme.accent;
+
+                                    VerticalLayout {
+                                        padding: 3px;
+                                        spacing: 2px;
+                                        for sugg in root.tag-suggestions : Rectangle {
+                                            height: 22px;
+                                            background: sugg-touch.has-hover ? root.theme.accent.transparentize(85%) : #00000000;
+                                            border-radius: 2px;
+
+                                            sugg-touch := TouchArea {
+                                                clicked => {
+                                                    root.apply-tag-suggestion(sugg);
+                                                    tag-in.text = "";
+                                                }
+                                                mouse-cursor: pointer;
+                                            }
+
+                                            HorizontalLayout {
+                                                padding-left: 6px;
+                                                padding-right: 6px;
+                                                spacing: 4px;
+                                                alignment: start;
+
+                                                Text {
+                                                    text: "#" + sugg;
+                                                    color: sugg-touch.has-hover ? root.theme.accent : root.theme.text;
+                                                    font-size: 11px;
+                                                    font-weight: 500;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
                                         }
                                     }
                                 }

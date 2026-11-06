@@ -22,7 +22,13 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
     }
 }
 
-$Version = "0.6.0"
+# Auto-detect version from Cargo.toml
+$CargoToml = Get-Content (Join-Path $ProjectRoot "Cargo.toml") -Raw
+if ($CargoToml -match 'version\s*=\s*"([^"]+)"') {
+    $Version = $matches[1]
+} else {
+    $Version = "0.8.0"
+}
 $ReleaseExe = Join-Path $ProjectRoot "target\release\lx-index.exe"
 $DistDir = Join-Path $ProjectRoot "target\release\bundle\windows\lx-index-windows-x64"
 $ZipOutput = Join-Path $ProjectRoot "target\release\lx-index-$Version-windows-x64.zip"
