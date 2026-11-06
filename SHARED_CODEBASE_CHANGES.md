@@ -383,14 +383,16 @@ callback apply-tag-suggestion(string);
    - Added circular `MetroAppBarButton` ("标签" / "Tags") to the bottom of Pane 1, styled alongside Vault Switcher, Sync, and Settings.
    - Button active state strictly binds to `is-active: root.show-tag-flyout`. When clicking outside to dismiss the flyout, the button immediately restores its default state.
    - Label color remains readable (`label-color: #2c2523`) in all states.
-2. **Tag Flyout Popover**:
-   - Floats above the App Bar (`y: parent.height - self.height - 56px`, `height: 280px`, `width: 320px`).
-   - Dismisses automatically on outside click via a transparent backdrop covering Panes 1, 2, and 3.
+2. **Tag Flyout Popover & Light-Dismiss Overlay**:
+   - Rendered as a root-level light-dismiss overlay above the App Bar (`y: parent.height - self.height - 56px`, `height: 340px`, `width: 290px`).
+   - Covered by a full-window transparent backdrop TouchArea: clicking anywhere outside the flyout (Pane 1, middle literature stream, or right inspector) immediately closes the flyout, restoring the Tag button's default visual state.
    - Header displays total unique tag count and sort mode pills (`按频次` / `Freq` vs `按字母` / `A-Z`).
    - When one or more tags are active (`filter-tags-count > 0`), shows an active tag bar with removable chips and a `清除全部` button.
-   - Tags container uses `Flickable` with a `FlexboxLayout { flex-wrap: wrap; spacing: 6px; }`. Tags flow horizontally and wrap to subsequent lines.
+   - Tags container uses `Flickable` with bounded `width: parent.width;` (270px) and `FlexboxLayout { flex-wrap: wrap; spacing: 6px; }`. Tags flow horizontally and cleanly wrap to subsequent lines without being truncated at line ends.
+   - `MetroTagChip` includes `chip-max-width` and `overflow: elide` to prevent individual oversized tags from breaking the container bounds.
    - Active tags in the cloud highlight with solid accent background and contrasting text color.
-3. **Inspector Layout & In-Flow Auto-Suggest**:
+3. **Inspector Layout & Dimensions**:
+   - Pane 3 width refined to `preferred-width: 290px` (`min-width: 260px`, `max-width: 320px`, `horizontal-stretch: 0`) and `padding: 14px`, restoring aesthetic balance and leaving ample space for the literature stream.
    - Inspector is wrapped in a vertical `Flickable` to avoid overflow on smaller screen heights.
    - Section headers (PROJECTS, TAGS) and input rows have dedicated heights and spacing (`spacing: 6px; alignment: start;`), eliminating awkward gaps when 0 items exist.
    - Projects and tags use `FlexboxLayout { flex-wrap: wrap; }` with `overflow: elide` on `MetroTagChip`, guaranteeing that chips wrap within inspector boundaries and never escape the window.

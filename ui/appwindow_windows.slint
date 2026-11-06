@@ -130,6 +130,7 @@ component MetroTagChip inherits Rectangle {
     in-out property <bool> has-count: false;
     in-out property <int> count: 0;
     in-out property <bool> clickable: false;
+    in-out property <length> chip-max-width: 260px;
     callback remove();
     callback clicked();
 
@@ -138,6 +139,7 @@ component MetroTagChip inherits Rectangle {
     border-width: 1px;
     border-color: root.border-col;
     height: 22px;
+    max-width: root.chip-max-width;
 
     if root.clickable : TouchArea {
         clicked => { root.clicked(); }
@@ -623,6 +625,7 @@ export component AppWindow inherits Window {
 
             TouchArea {
                 clicked => {
+                    root.show-tag-flyout = false;
                     root.star-filter-open = false;
                     root.show-tag-suggestions = false;
                     if root.search-query == "" { root.search-expanded = false; }
@@ -1068,203 +1071,6 @@ export component AppWindow inherits Window {
                     }
                 }
             }
-
-            // Click-outside backdrop to dismiss tag flyout
-            if root.show-tag-flyout : TouchArea {
-                x: 0px;
-                y: 0px;
-                width: parent.width;
-                height: parent.height - 52px;
-                clicked => {
-                    root.show-tag-flyout = false;
-                }
-            }
-
-            // Tag Flyout Overlay (Pops up above bottom App Bar)
-            if root.show-tag-flyout : Rectangle {
-                width: parent.width - 16px;
-                height: 320px;
-                x: 8px;
-                y: parent.height - self.height - 56px;
-                background: root.theme.mantle;
-                border-radius: 2px;
-                border-width: 1px;
-                border-color: root.theme.surface2;
-
-                VerticalLayout {
-                    padding: 10px;
-                    spacing: 8px;
-
-                    // Flyout Header
-                    HorizontalLayout {
-                        alignment: space-between;
-
-                        HorizontalLayout {
-                            spacing: 4px;
-
-                            Text {
-                                text: root.current-language == "zh" ? "全部标签" : "Tags";
-                                font-size: 13px;
-                                font-weight: 700;
-                                color: root.theme.text;
-                                vertical-alignment: center;
-                            }
-                            Text {
-                                text: "(" + root.tag-categories.length + ")";
-                                font-size: 11px;
-                                color: root.theme.overlay1;
-                                vertical-alignment: center;
-                            }
-                        }
-
-                        // Sort Toggle Controls
-                        HorizontalLayout {
-                            spacing: 4px;
-                            // Count button
-                            Rectangle {
-                                height: 20px;
-                                border-radius: 2px;
-                                background: root.tag-sort-mode == 0 ? root.theme.accent : root.theme.surface0;
-                                TouchArea {
-                                    clicked => { root.set-tag-sort-mode(0); }
-                                    mouse-cursor: pointer;
-                                }
-                                HorizontalLayout {
-                                    padding-left: 6px;
-                                    padding-right: 6px;
-                                    alignment: center;
-                                    Text {
-                                        text: root.current-language == "zh" ? "按频次" : "Freq";
-                                        font-size: 10px;
-                                        font-weight: root.tag-sort-mode == 0 ? 700 : 400;
-                                        color: root.tag-sort-mode == 0 ? root.theme.base : root.theme.subtext1;
-                                        vertical-alignment: center;
-                                    }
-                                }
-                            }
-                            // Alphabetical button
-                            Rectangle {
-                                height: 20px;
-                                border-radius: 2px;
-                                background: root.tag-sort-mode == 1 ? root.theme.accent : root.theme.surface0;
-                                TouchArea {
-                                    clicked => { root.set-tag-sort-mode(1); }
-                                    mouse-cursor: pointer;
-                                }
-                                HorizontalLayout {
-                                    padding-left: 6px;
-                                    padding-right: 6px;
-                                    alignment: center;
-                                    Text {
-                                        text: root.current-language == "zh" ? "按字母" : "A-Z";
-                                        font-size: 10px;
-                                        font-weight: root.tag-sort-mode == 1 ? 700 : 400;
-                                        color: root.tag-sort-mode == 1 ? root.theme.base : root.theme.subtext1;
-                                        vertical-alignment: center;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Multi-select active tag filter banner
-                    if root.filter-tags-count > 0 : Rectangle {
-                        background: root.theme.accent.transparentize(88%);
-                        border-radius: 2px;
-
-                        VerticalLayout {
-                            padding: 6px;
-                            spacing: 4px;
-
-                            HorizontalLayout {
-                                alignment: space-between;
-                                Text {
-                                    text: (root.current-language == "zh" ? "已选过滤标签 (" : "Filter tags (") + root.filter-tags-count + "):";
-                                    font-size: 10px;
-                                    color: root.theme.accent;
-                                    font-weight: 700;
-                                    vertical-alignment: center;
-                                }
-                                Rectangle {
-                                    width: 44px;
-                                    height: 18px;
-                                    border-radius: 2px;
-                                    background: root.theme.accent.transparentize(80%);
-                                    TouchArea {
-                                        clicked => { root.clear-filter-tags(); }
-                                        mouse-cursor: pointer;
-                                    }
-                                    Text {
-                                        text: root.current-language == "zh" ? "清空" : "Clear";
-                                        font-size: 10px;
-                                        color: root.theme.accent;
-                                        font-weight: 600;
-                                        horizontal-alignment: center;
-                                        vertical-alignment: center;
-                                    }
-                                }
-                            }
-
-                            FlexboxLayout {
-                                flex-wrap: wrap;
-                                spacing: 4px;
-
-                                for t in root.filter-tags : MetroTagChip {
-                                    text: "#" + t;
-                                    removable: true;
-                                    text-color: root.theme.accent;
-                                    base-bg: root.theme.accent.transparentize(75%);
-                                    border-col: root.theme.accent;
-                                    remove => { root.select-tag(t); }
-                                }
-                            }
-                        }
-                    }
-
-                    // Divider
-                    Rectangle {
-                        height: 1px;
-                        background: root.theme.surface0;
-                    }
-
-                    // Tag cloud (priority horizontal layout, wrapping to next line with scrolling)
-                    if root.tag-categories.length == 0 : VerticalLayout {
-                        alignment: center;
-                        vertical-stretch: 1;
-                        Text {
-                            text: root.current-language == "zh" ? "暂无标签" : "No tags found";
-                            font-size: 12px;
-                            color: root.theme.overlay1;
-                            horizontal-alignment: center;
-                        }
-                    }
-
-                    if root.tag-categories.length > 0 : Flickable {
-                        vertical-stretch: 1;
-                        content-height: flyout-tag-cloud.preferred-height;
-                        content-width: parent.width;
-
-                        flyout-tag-cloud := FlexboxLayout {
-                            flex-wrap: wrap;
-                            spacing: 6px;
-                            alignment: start;
-
-                            for cat in root.tag-categories : MetroTagChip {
-                                text: "#" + cat.name;
-                                has-count: true;
-                                count: cat.count;
-                                clickable: true;
-                                text-color: cat.is-selected ? root.theme.base : root.theme.accent;
-                                base-bg: cat.is-selected ? root.theme.accent : root.theme.accent.transparentize(88%);
-                                border-col: cat.is-selected ? root.theme.accent : root.theme.accent.transparentize(60%);
-                                clicked => {
-                                    root.select-tag(cat.name);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
 
             // =================================================================
@@ -1274,6 +1080,15 @@ export component AppWindow inherits Window {
                 min-width: 360px;
                 horizontal-stretch: 1;
                 background: root.theme.base;
+
+                TouchArea {
+                    clicked => {
+                        root.show-tag-flyout = false;
+                        root.star-filter-open = false;
+                        root.show-tag-suggestions = false;
+                        if root.search-query == "" { root.search-expanded = false; }
+                    }
+                }
 
                 VerticalLayout {
                     padding: 0px;
@@ -1818,13 +1633,15 @@ export component AppWindow inherits Window {
             // PANE 3: RIGHT METADATA & ACTIONS INSPECTOR
             // =================================================================
             Rectangle {
-                min-width: 300px;
-                preferred-width: 380px;
-                max-width: 440px;
+                min-width: 260px;
+                preferred-width: 290px;
+                max-width: 320px;
+                horizontal-stretch: 0;
                 background: root.theme.mantle;
 
                 TouchArea {
                     clicked => {
+                        root.show-tag-flyout = false;
                         root.star-filter-open = false;
                         root.show-tag-suggestions = false;
                         if root.search-query == "" { root.search-expanded = false; }
@@ -1958,7 +1775,10 @@ export component AppWindow inherits Window {
                         content-height: inspector-layout.preferred-height;
 
                         inspector-layout := VerticalLayout {
-                            padding: 18px;
+                            padding-left: 14px;
+                            padding-right: 14px;
+                            padding-top: 14px;
+                            padding-bottom: 14px;
                             spacing: 12px;
                             alignment: start;
 
@@ -2427,6 +2247,210 @@ export component AppWindow inherits Window {
         }
     }
 }
+
+    // =========================================================================
+    // 2. TAG FLYOUT LIGHT-DISMISS OVERLAY
+    // =========================================================================
+    if root.show-tag-flyout : Rectangle {
+        // Transparent backdrop covering the entire window to dismiss on outside click
+        TouchArea {
+            clicked => {
+                root.show-tag-flyout = false;
+            }
+        }
+
+        // Tag Flyout Card (Positioned directly above the bottom App Bar Tag button)
+        Rectangle {
+            width: 290px;
+            height: 340px;
+            x: 8px;
+            y: parent.height - self.height - 56px;
+            background: root.theme.mantle;
+            border-radius: 2px;
+            border-width: 1px;
+            border-color: root.theme.surface2;
+            drop-shadow-blur: 16px;
+            drop-shadow-color: #00000040;
+
+            VerticalLayout {
+                padding: 10px;
+                spacing: 8px;
+
+                // Flyout Header
+                HorizontalLayout {
+                    alignment: space-between;
+
+                    HorizontalLayout {
+                        spacing: 4px;
+
+                        Text {
+                            text: root.current-language == "zh" ? "全部标签" : "Tags";
+                            font-size: 13px;
+                            font-weight: 700;
+                            color: root.theme.text;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            text: "(" + root.tag-categories.length + ")";
+                            font-size: 11px;
+                            color: root.theme.overlay1;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    // Sort Toggle Controls
+                    HorizontalLayout {
+                        spacing: 4px;
+                        // Count button
+                        Rectangle {
+                            height: 20px;
+                            border-radius: 2px;
+                            background: root.tag-sort-mode == 0 ? root.theme.accent : root.theme.surface0;
+                            TouchArea {
+                                clicked => { root.set-tag-sort-mode(0); }
+                                mouse-cursor: pointer;
+                            }
+                            HorizontalLayout {
+                                padding-left: 6px;
+                                padding-right: 6px;
+                                alignment: center;
+                                Text {
+                                    text: root.current-language == "zh" ? "按频次" : "Freq";
+                                    font-size: 10px;
+                                    font-weight: root.tag-sort-mode == 0 ? 700 : 400;
+                                    color: root.tag-sort-mode == 0 ? root.theme.base : root.theme.subtext1;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                        // Alphabetical button
+                        Rectangle {
+                            height: 20px;
+                            border-radius: 2px;
+                            background: root.tag-sort-mode == 1 ? root.theme.accent : root.theme.surface0;
+                            TouchArea {
+                                clicked => { root.set-tag-sort-mode(1); }
+                                mouse-cursor: pointer;
+                            }
+                            HorizontalLayout {
+                                padding-left: 6px;
+                                padding-right: 6px;
+                                alignment: center;
+                                Text {
+                                    text: root.current-language == "zh" ? "按字母" : "A-Z";
+                                    font-size: 10px;
+                                    font-weight: root.tag-sort-mode == 1 ? 700 : 400;
+                                    color: root.tag-sort-mode == 1 ? root.theme.base : root.theme.subtext1;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Multi-select active tag filter banner
+                if root.filter-tags-count > 0 : Rectangle {
+                    background: root.theme.accent.transparentize(88%);
+                    border-radius: 2px;
+
+                    VerticalLayout {
+                        padding: 6px;
+                        spacing: 4px;
+
+                        HorizontalLayout {
+                            alignment: space-between;
+                            Text {
+                                text: (root.current-language == "zh" ? "已选过滤标签 (" : "Filter tags (") + root.filter-tags-count + "):";
+                                font-size: 10px;
+                                color: root.theme.accent;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                            Rectangle {
+                                width: 44px;
+                                height: 18px;
+                                border-radius: 2px;
+                                background: root.theme.accent.transparentize(80%);
+                                TouchArea {
+                                    clicked => { root.clear-filter-tags(); }
+                                    mouse-cursor: pointer;
+                                }
+                                Text {
+                                    text: root.current-language == "zh" ? "清空" : "Clear";
+                                    font-size: 10px;
+                                    color: root.theme.accent;
+                                    font-weight: 600;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+
+                        FlexboxLayout {
+                            width: parent.width;
+                            flex-wrap: wrap;
+                            spacing: 4px;
+
+                            for t in root.filter-tags : MetroTagChip {
+                                text: "#" + t;
+                                removable: true;
+                                chip-max-width: 250px;
+                                text-color: root.theme.accent;
+                                base-bg: root.theme.accent.transparentize(75%);
+                                border-col: root.theme.accent;
+                                remove => { root.select-tag(t); }
+                            }
+                        }
+                    }
+                }
+
+                // Divider
+                Rectangle {
+                    height: 1px;
+                    background: root.theme.surface0;
+                }
+
+                // Tag cloud (priority horizontal layout, wrapping to next line with scrolling)
+                if root.tag-categories.length == 0 : VerticalLayout {
+                    alignment: center;
+                    vertical-stretch: 1;
+                    Text {
+                        text: root.current-language == "zh" ? "暂无标签" : "No tags found";
+                        font-size: 12px;
+                        color: root.theme.overlay1;
+                        horizontal-alignment: center;
+                    }
+                }
+
+                if root.tag-categories.length > 0 : Flickable {
+                    vertical-stretch: 1;
+                    content-height: flyout-tag-cloud.preferred-height;
+                    content-width: parent.width;
+
+                    flyout-tag-cloud := FlexboxLayout {
+                        width: parent.width;
+                        flex-wrap: wrap;
+                        spacing: 6px;
+                        alignment: start;
+
+                        for cat in root.tag-categories : MetroTagChip {
+                            text: "#" + cat.name;
+                            has-count: true;
+                            count: cat.count;
+                            clickable: true;
+                            chip-max-width: 250px;
+                            text-color: cat.is-selected ? root.theme.base : root.theme.accent;
+                            base-bg: cat.is-selected ? root.theme.accent : root.theme.accent.transparentize(88%);
+                            border-col: cat.is-selected ? root.theme.accent : root.theme.accent.transparentize(60%);
+                            clicked => {
+                                root.select-tag(cat.name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // =========================================================================
     // 3. METRO SETTINGS & VAULTS MODAL (PIVOT OVERLAY)
