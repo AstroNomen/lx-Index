@@ -2,7 +2,10 @@ fn main() {
     #[cfg(target_os = "windows")]
     let ui_file = "ui/appwindow_windows.slint";
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    let ui_file = "ui/appwindow_macos.slint";
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     let ui_file = "ui/appwindow.slint";
 
     slint_build::compile(ui_file).expect("Slint build failed");
