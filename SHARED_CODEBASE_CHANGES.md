@@ -188,14 +188,14 @@ When building or reviewing the macOS target, check the following:
 
 ---
 
-## 4. Phase 5: macOS True 3-Column UI & Native System Integration (v0.6.5)
+## 4. Phase 5: macOS True 3-Column UI & Native System Integration (v0.8.0)
 
-This section documents the macOS platform-specific UI refinements and shared codebase coordination introduced in v0.6.5.
+This section documents the macOS platform-specific UI refinements and shared codebase coordination introduced in v0.8.0.
 
 ### 4.1 Cross-Platform Version Synchronization
 - **Issue**: Previously, version numbers were hardcoded independently in `ui/appwindow_macos.slint` (`"v0.5.0 Beta"`) and `ui/appwindow_windows.slint` (`"v0.6.0"`), causing settings modal version desynchronization when bumping versions in `Cargo.toml`.
 - **Solution**:
-  - Declared `in-out property <string> app-version: "v0.6.5";` in `AppWindow` across all Slint definitions (`appwindow_macos.slint`, `appwindow.slint`, `appwindow_windows.slint`).
+  - Declared `in-out property <string> app-version: "v0.8.0";` in `AppWindow` across all Slint definitions (`appwindow_macos.slint`, `appwindow.slint`, `appwindow_windows.slint`).
   - In `sync_ui()` (`src/main.rs`), dynamically bind `ui.set_app_version(format!("v{}", env!("CARGO_PKG_VERSION")).into());`.
   - Settings About tabs on both macOS and Windows now reference `root.app-version` dynamically. Any version update in `Cargo.toml` is automatically propagated to both platforms without manual edits.
 
@@ -299,4 +299,4 @@ This section documents the macOS platform-specific UI refinements and shared cod
 
 ---
 
-*Document version: 0.6.5 — Updated for macOS Phase 5 & cross-platform synchronization.*
+*Document version: 0.8.0 — Updated for macOS Phase 5 & cross-platform synchronization.*
