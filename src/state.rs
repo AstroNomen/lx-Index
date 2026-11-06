@@ -24,7 +24,7 @@ pub struct AppState {
     pub active_perspective: String, // "all", "unread", "priority", "discarded", "uncatalogued"
     pub active_field: Option<String>,
     pub active_project: Option<String>,
-    pub active_tag: Option<String>,
+    pub filter_tags: Vec<String>, // empty = all tags; multi-select list e.g. ["optics", "quantum"]
     pub tag_sort_mode: i32, // 0: By Count (descending), 1: Alphabetical (A-Z)
     pub filter_stars: Vec<u8>, // empty = all stars; multi-select list e.g. [5, 4]
     pub selected_id: Option<String>,
@@ -52,7 +52,7 @@ impl AppState {
             active_perspective: "all".to_string(),
             active_field: None,
             active_project: None,
-            active_tag: None,
+            filter_tags: Vec::new(),
             tag_sort_mode: 0,
             filter_stars: Vec::new(),
             selected_id: None,
@@ -97,7 +97,7 @@ impl AppState {
 
         self.vault_path = Some(path_buf);
         self.library = scan;
-        self.active_tag = None;
+        self.filter_tags.clear();
         self.save_current_config();
         Ok(())
     }
@@ -135,7 +135,7 @@ impl AppState {
                     self.active_perspective = "all".to_string();
                     self.active_field = None;
                     self.active_project = None;
-                    self.active_tag = None;
+                    self.filter_tags.clear();
                     self.filter_stars.clear();
                 }
             }
@@ -246,10 +246,12 @@ impl AppState {
                     }
                 }
 
-                // Tag filter
-                if let Some(ref tag) = self.active_tag {
-                    if !item.metadata.tags.iter().any(|t| t.eq_ignore_ascii_case(tag)) {
-                        return false;
+                // Tag filter (multi-select: paper must contain all selected filter tags)
+                if !self.filter_tags.is_empty() {
+                    for ft in &self.filter_tags {
+                        if !item.metadata.tags.iter().any(|t| t.eq_ignore_ascii_case(ft)) {
+                            return false;
+                        }
                     }
                 }
 
@@ -427,13 +429,27 @@ impl AppState {
         list
     }
 
-    /// Toggles or sets the active tag filter.
-    pub fn set_active_tag(&mut self, tag: Option<String>) {
-        if self.active_tag == tag {
-            self.active_tag = None;
-        } else {
-            self.active_tag = tag;
+    /// Toggles a tag in the multi-select filter list.
+    pub fn toggle_filter_tag(&mut self, tag: &str) {
+        let t = tag.trim().to_string();
+        if t.is_empty() {
+            return;
         }
+        if let Some(pos) = self.filter_tags.iter().position(|existing| existing.eq_ignore_ascii_case(&t)) {
+            self.filter_tags.remove(pos);
+        } else {
+            self.filter_tags.push(t);
+        }
+    }
+
+    /// Clears all tag filters.
+    pub fn clear_filter_tags(&mut self) {
+        self.filter_tags.clear();
+    }
+
+    /// Checks if a tag is currently in the active filter list.
+    pub fn is_tag_filtered(&self, tag: &str) -> bool {
+        self.filter_tags.iter().any(|t| t.eq_ignore_ascii_case(tag))
     }
 
     /// Returns auto-suggest candidate tags matching `prefix`, excluding `current_tags`,
@@ -717,7 +733,7 @@ tags:
             active_perspective: "all".to_string(),
             active_field: None,
             active_project: None,
-            active_tag: None,
+            filter_tags: Vec::new(),
             tag_sort_mode: 0,
             filter_stars: Vec::new(),
             selected_id: None,
@@ -840,7 +856,7 @@ tags:
             active_perspective: "all".to_string(),
             active_field: None,
             active_project: None,
-            active_tag: None,
+            filter_tags: Vec::new(),
             tag_sort_mode: 0,
             filter_stars: Vec::new(),
             selected_id: None,
@@ -951,7 +967,7 @@ tags:
             active_perspective: "all".to_string(),
             active_field: None,
             active_project: None,
-            active_tag: None,
+            filter_tags: Vec::new(),
             tag_sort_mode: 0,
             filter_stars: Vec::new(),
             selected_id: None,
@@ -984,15 +1000,31 @@ tags:
         let suggs_excluded = state.get_tag_suggestions("las", &["laser".to_string()], 5);
         assert!(suggs_excluded.is_empty());
 
-        // 4. Tag filtering
-        state.set_active_tag(Some("quantum".to_string()));
+        // 4. Tag filtering (multi-select)
+        state.toggle_filter_tag("quantum");
+        assert_eq!(state.filter_tags, vec!["quantum"]);
         let filtered = state.filtered_items();
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].metadata.title, "Paper One");
 
-        // Toggle tag filter off
-        state.set_active_tag(Some("quantum".to_string()));
-        assert_eq!(state.active_tag, None);
+        // Multi-select: Paper One has [laser, quantum], Paper Two has [laser, optics]
+        state.toggle_filter_tag("laser");
+        assert_eq!(state.filter_tags.len(), 2);
+        assert_eq!(state.filtered_items().len(), 1);
+
+        // Add optics -> no paper has quantum + laser + optics
+        state.toggle_filter_tag("optics");
+        assert_eq!(state.filtered_items().len(), 0);
+
+        // Untoggle quantum and optics -> only laser -> both papers match
+        state.toggle_filter_tag("quantum");
+        state.toggle_filter_tag("optics");
+        assert_eq!(state.filter_tags, vec!["laser"]);
+        assert_eq!(state.filtered_items().len(), 2);
+
+        // Clear all tag filters
+        state.clear_filter_tags();
+        assert!(state.filter_tags.is_empty());
         assert_eq!(state.filtered_items().len(), 2);
 
         let _ = fs::remove_dir_all(&temp_dir);

@@ -156,6 +156,7 @@ component MetroTagChip inherits Rectangle {
             font-size: 11px;
             font-weight: 500;
             vertical-alignment: center;
+            overflow: elide;
         }
 
         if root.has-count : Rectangle {
@@ -209,6 +210,7 @@ component MetroAppBarButton inherits Rectangle {
     in-out property <string> label: "";
     in-out property <image> icon-src;
     in-out property <color> icon-color: #2c2523;
+    in-out property <color> label-color: #2c2523;
     in-out property <color> circle-border: #756760;
     in-out property <color> hover-bg: #7a434d;
     in-out property <color> hover-icon-color: #fbf5ea;
@@ -256,7 +258,7 @@ component MetroAppBarButton inherits Rectangle {
 
         if root.label != "" : Text {
             text: root.label;
-            color: root.icon-color;
+            color: root.label-color;
             font-size: 9px;
             font-weight: 500;
             horizontal-alignment: center;
@@ -504,7 +506,8 @@ export component AppWindow inherits Window {
     in-out property <[SlintCategoryItem]> field-categories: [];
     in-out property <[SlintCategoryItem]> project-categories: [];
     in-out property <[SlintCategoryItem]> tag-categories: [];
-    in-out property <string> active-tag: "";
+    in-out property <[string]> filter-tags: [];
+    in-out property <int> filter-tags-count: 0;
     in-out property <bool> show-tag-flyout: false;
     in-out property <int> tag-sort-mode: 0; // 0: By Count, 1: By Alphabetical
     in-out property <[string]> tag-suggestions: [];
@@ -513,7 +516,7 @@ export component AppWindow inherits Window {
     in-out property <string> search-query: "";
     in-out property <bool> search-expanded: false;
     in-out property <int> left-pivot-section: 0; // 0: Perspectives, 1: Disciplines, 2: Projects
-    in-out property <bool> filter-active: root.search-query != "" || root.filter-stars-count > 0 || root.active-field != "" || root.active-project != "" || root.active-tag != "" || root.active-perspective != "all";
+    in-out property <bool> filter-active: root.search-query != "" || root.filter-stars-count > 0 || root.active-field != "" || root.active-project != "" || root.filter-tags-count > 0 || root.active-perspective != "all";
     in-out property <[SlintPaperItem]> items: [];
     in-out property <int> selected-index: -1;
     in-out property <string> status-bar-text: "就绪";
@@ -557,6 +560,7 @@ export component AppWindow inherits Window {
     callback select-all-filter-stars();
     callback clear-filters();
     callback select-tag(string);
+    callback clear-filter-tags();
     callback toggle-tag-flyout();
     callback set-tag-sort-mode(int);
     callback filter-tag-suggestions(string);
@@ -1025,11 +1029,12 @@ export component AppWindow inherits Window {
                         MetroAppBarButton {
                             label: root.current-language == "zh" ? "标签" : "Tags";
                             icon-src: @image-url("icons/tag.svg");
-                            icon-color: (root.show-tag-flyout || root.active-tag != "") ? root.theme.base : root.theme.text;
-                            circle-border: (root.show-tag-flyout || root.active-tag != "") ? root.theme.accent : root.theme.surface2;
+                            icon-color: root.show-tag-flyout ? root.theme.base : root.theme.text;
+                            label-color: root.theme.text;
+                            circle-border: root.show-tag-flyout ? root.theme.accent : root.theme.surface2;
                             hover-bg: root.theme.accent;
                             hover-icon-color: root.theme.base;
-                            is-active: root.show-tag-flyout || root.active-tag != "";
+                            is-active: root.show-tag-flyout;
                             clicked => {
                                 root.toggle-tag-flyout();
                             }
@@ -1078,7 +1083,7 @@ export component AppWindow inherits Window {
             // Tag Flyout Overlay (Pops up above bottom App Bar)
             if root.show-tag-flyout : Rectangle {
                 width: parent.width - 16px;
-                height: 280px;
+                height: 320px;
                 x: 8px;
                 y: parent.height - self.height - 56px;
                 background: root.theme.mantle;
@@ -1162,37 +1167,55 @@ export component AppWindow inherits Window {
                         }
                     }
 
-                    // Active tag filter banner if a tag is active
-                    if root.active-tag != "" : Rectangle {
-                        height: 24px;
+                    // Multi-select active tag filter banner
+                    if root.filter-tags-count > 0 : Rectangle {
+                        background: root.theme.accent.transparentize(88%);
                         border-radius: 2px;
-                        background: root.theme.accent.transparentize(85%);
-                        HorizontalLayout {
-                            padding-left: 8px;
-                            padding-right: 8px;
-                            alignment: space-between;
-                            Text {
-                                text: (root.current-language == "zh" ? "当前过滤: #" : "Filtering: #") + root.active-tag;
-                                font-size: 11px;
-                                color: root.theme.accent;
-                                font-weight: 600;
-                                vertical-alignment: center;
-                            }
-                            Rectangle {
-                                width: 14px;
-                                height: 14px;
-                                y: (parent.height - self.height) / 2;
-                                TouchArea {
-                                    clicked => { root.select-tag(root.active-tag); }
-                                    mouse-cursor: pointer;
+
+                        VerticalLayout {
+                            padding: 6px;
+                            spacing: 4px;
+
+                            HorizontalLayout {
+                                alignment: space-between;
+                                Text {
+                                    text: (root.current-language == "zh" ? "已选过滤标签 (" : "Filter tags (") + root.filter-tags-count + "):";
+                                    font-size: 10px;
+                                    color: root.theme.accent;
+                                    font-weight: 700;
+                                    vertical-alignment: center;
                                 }
-                                Image {
-                                    source: @image-url("icons/win-close.svg");
-                                    width: 8px;
-                                    height: 8px;
-                                    colorize: root.theme.accent;
-                                    x: (parent.width - self.width) / 2;
-                                    y: (parent.height - self.height) / 2;
+                                Rectangle {
+                                    width: 44px;
+                                    height: 18px;
+                                    border-radius: 2px;
+                                    background: root.theme.accent.transparentize(80%);
+                                    TouchArea {
+                                        clicked => { root.clear-filter-tags(); }
+                                        mouse-cursor: pointer;
+                                    }
+                                    Text {
+                                        text: root.current-language == "zh" ? "清空" : "Clear";
+                                        font-size: 10px;
+                                        color: root.theme.accent;
+                                        font-weight: 600;
+                                        horizontal-alignment: center;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+
+                            FlexboxLayout {
+                                flex-wrap: wrap;
+                                spacing: 4px;
+
+                                for t in root.filter-tags : MetroTagChip {
+                                    text: "#" + t;
+                                    removable: true;
+                                    text-color: root.theme.accent;
+                                    base-bg: root.theme.accent.transparentize(75%);
+                                    border-col: root.theme.accent;
+                                    remove => { root.select-tag(t); }
                                 }
                             }
                         }
@@ -1204,7 +1227,7 @@ export component AppWindow inherits Window {
                         background: root.theme.surface0;
                     }
 
-                    // Tag list
+                    // Tag cloud (priority horizontal layout, wrapping to next line with scrolling)
                     if root.tag-categories.length == 0 : VerticalLayout {
                         alignment: center;
                         vertical-stretch: 1;
@@ -1216,24 +1239,26 @@ export component AppWindow inherits Window {
                         }
                     }
 
-                    if root.tag-categories.length > 0 : ListView {
+                    if root.tag-categories.length > 0 : Flickable {
                         vertical-stretch: 1;
-                        for cat in root.tag-categories : Rectangle {
-                            height: 28px;
-                            background: #00000000;
-                            HorizontalLayout {
-                                alignment: start;
-                                MetroTagChip {
-                                    text: "#" + cat.name;
-                                    has-count: true;
-                                    count: cat.count;
-                                    clickable: true;
-                                    text-color: root.active-tag == cat.name ? root.theme.base : root.theme.accent;
-                                    base-bg: root.active-tag == cat.name ? root.theme.accent : root.theme.accent.transparentize(88%);
-                                    border-col: root.active-tag == cat.name ? root.theme.accent : root.theme.accent.transparentize(60%);
-                                    clicked => {
-                                        root.select-tag(cat.name);
-                                    }
+                        content-height: flyout-tag-cloud.preferred-height;
+                        content-width: parent.width;
+
+                        flyout-tag-cloud := FlexboxLayout {
+                            flex-wrap: wrap;
+                            spacing: 6px;
+                            alignment: start;
+
+                            for cat in root.tag-categories : MetroTagChip {
+                                text: "#" + cat.name;
+                                has-count: true;
+                                count: cat.count;
+                                clickable: true;
+                                text-color: cat.is-selected ? root.theme.base : root.theme.accent;
+                                base-bg: cat.is-selected ? root.theme.accent : root.theme.accent.transparentize(88%);
+                                border-col: cat.is-selected ? root.theme.accent : root.theme.accent.transparentize(60%);
+                                clicked => {
+                                    root.select-tag(cat.name);
                                 }
                             }
                         }
@@ -1928,10 +1953,14 @@ export component AppWindow inherits Window {
                     }
 
                     // Active Inspector View
-                    if root.has-selection : VerticalLayout {
+                    if root.has-selection : Flickable {
                         vertical-stretch: 1;
-                        padding: 18px;
-                        spacing: 12px;
+                        content-height: inspector-layout.preferred-height;
+
+                        inspector-layout := VerticalLayout {
+                            padding: 18px;
+                            spacing: 12px;
+                            alignment: start;
 
                     // Large Article Title
                     Text {
@@ -2102,7 +2131,7 @@ export component AppWindow inherits Window {
                         }
                     }
 
-                    // Projects Tags Box
+                    // Projects Section
                     VerticalLayout {
                         spacing: 6px;
 
@@ -2114,32 +2143,23 @@ export component AppWindow inherits Window {
                             letter-spacing: 0.8px;
                         }
 
+                        // Add project input row
                         HorizontalLayout {
                             spacing: 6px;
-                            alignment: start;
+                            height: 26px;
 
-                            for proj[p_idx] in root.inspector-projects : MetroTagChip {
-                                text: proj;
-                                removable: true;
-                                text-color: root.theme.mauve;
-                                base-bg: root.theme.mauve.transparentize(85%);
-                                border-col: root.theme.mauve.transparentize(60%);
-                                remove => { root.remove-project(p_idx); }
-                            }
-
-                            // Add project input
                             Rectangle {
-                                height: 22px;
-                                width: 110px;
+                                horizontal-stretch: 1;
+                                height: 26px;
                                 background: root.theme.base;
                                 border-radius: 2px;
                                 border-width: 1px;
                                 border-color: proj-in.has-focus ? root.theme.mauve : root.theme.surface2;
 
                                 proj-in := TextInput {
-                                    x: 6px;
+                                    x: 8px;
                                     y: 0px;
-                                    width: parent.width - 12px;
+                                    width: parent.width - 16px;
                                     height: parent.height;
                                     text: root.new-project-input;
                                     color: root.theme.text;
@@ -2155,10 +2175,42 @@ export component AppWindow inherits Window {
                                     }
                                 }
                             }
+
+                            MetroButton {
+                                text: "+";
+                                width: 30px;
+                                height: 26px;
+                                text-color: root.theme.mauve;
+                                base-bg: root.theme.mauve.transparentize(88%);
+                                hover-bg: root.theme.mauve.transparentize(75%);
+                                active-bg: root.theme.mauve.transparentize(65%);
+                                border-col: root.theme.mauve.transparentize(60%);
+                                clicked => {
+                                    if root.new-project-input != "" {
+                                        root.add-project(root.new-project-input);
+                                        root.new-project-input = "";
+                                    }
+                                }
+                            }
+                        }
+
+                        // Existing projects wrapped tag cloud
+                        if root.inspector-projects.length > 0 : FlexboxLayout {
+                            flex-wrap: wrap;
+                            spacing: 6px;
+
+                            for proj[p_idx] in root.inspector-projects : MetroTagChip {
+                                text: proj;
+                                removable: true;
+                                text-color: root.theme.mauve;
+                                base-bg: root.theme.mauve.transparentize(85%);
+                                border-col: root.theme.mauve.transparentize(60%);
+                                remove => { root.remove-project(p_idx); }
+                            }
                         }
                     }
 
-                    // Tags Box
+                    // Tags Section
                     VerticalLayout {
                         spacing: 6px;
 
@@ -2170,9 +2222,102 @@ export component AppWindow inherits Window {
                             letter-spacing: 0.8px;
                         }
 
+                        // Add tag input row
                         HorizontalLayout {
                             spacing: 6px;
-                            alignment: start;
+                            height: 26px;
+
+                            Rectangle {
+                                horizontal-stretch: 1;
+                                height: 26px;
+                                background: root.theme.base;
+                                border-radius: 2px;
+                                border-width: 1px;
+                                border-color: tag-in.has-focus ? root.theme.accent : root.theme.surface2;
+
+                                tag-in := TextInput {
+                                    x: 8px;
+                                    y: 0px;
+                                    width: parent.width - 16px;
+                                    height: parent.height;
+                                    text: root.new-tag-input;
+                                    color: root.theme.text;
+                                    font-size: 11px;
+                                    vertical-alignment: center;
+                                    edited => {
+                                        root.new-tag-input = self.text;
+                                        root.filter-tag-suggestions(self.text);
+                                    }
+                                    accepted => {
+                                        if self.text != "" {
+                                            root.add-tag(self.text);
+                                            self.text = "";
+                                            root.new-tag-input = "";
+                                            root.show-tag-suggestions = false;
+                                        }
+                                    }
+                                }
+                            }
+
+                            MetroButton {
+                                text: "+";
+                                width: 30px;
+                                height: 26px;
+                                text-color: root.theme.accent;
+                                base-bg: root.theme.accent.transparentize(88%);
+                                hover-bg: root.theme.accent.transparentize(75%);
+                                active-bg: root.theme.accent.transparentize(65%);
+                                border-col: root.theme.accent.transparentize(60%);
+                                clicked => {
+                                    if root.new-tag-input != "" {
+                                        root.add-tag(root.new-tag-input);
+                                        root.new-tag-input = "";
+                                        root.show-tag-suggestions = false;
+                                    }
+                                }
+                            }
+                        }
+
+                        // In-flow Auto-suggest candidates (UI Point 5: Flows in layout, NEVER blocked by System Actions!)
+                        if root.show-tag-suggestions && root.tag-suggestions.length > 0 : Rectangle {
+                            background: root.theme.surface0;
+                            border-radius: 2px;
+                            border-width: 1px;
+                            border-color: root.theme.accent.transparentize(50%);
+
+                            VerticalLayout {
+                                padding: 6px;
+                                spacing: 4px;
+
+                                Text {
+                                    text: root.current-language == "zh" ? "匹配已有标签 (点击添加):" : "Matching tags (click to add):";
+                                    font-size: 10px;
+                                    font-weight: 600;
+                                    color: root.theme.overlay1;
+                                }
+
+                                FlexboxLayout {
+                                    flex-wrap: wrap;
+                                    spacing: 6px;
+
+                                    for sugg in root.tag-suggestions : MetroTagChip {
+                                        text: "#" + sugg;
+                                        clickable: true;
+                                        text-color: root.theme.accent;
+                                        base-bg: root.theme.accent.transparentize(85%);
+                                        border-col: root.theme.accent.transparentize(50%);
+                                        clicked => {
+                                            root.apply-tag-suggestion(sugg);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Existing tags wrapped tag cloud
+                        if root.inspector-tags.length > 0 : FlexboxLayout {
+                            flex-wrap: wrap;
+                            spacing: 6px;
 
                             for tag[t_idx] in root.inspector-tags : MetroTagChip {
                                 text: tag;
@@ -2181,89 +2326,6 @@ export component AppWindow inherits Window {
                                 base-bg: root.theme.accent.transparentize(85%);
                                 border-col: root.theme.accent.transparentize(60%);
                                 remove => { root.remove-tag(t_idx); }
-                            }
-
-                            // Add tag input with auto-suggest dropdown
-                            Rectangle {
-                                height: 22px;
-                                width: 110px;
-
-                                Rectangle {
-                                    width: 100%;
-                                    height: 100%;
-                                    background: root.theme.base;
-                                    border-radius: 2px;
-                                    border-width: 1px;
-                                    border-color: tag-in.has-focus ? root.theme.accent : root.theme.surface2;
-
-                                    tag-in := TextInput {
-                                        x: 6px;
-                                        y: 0px;
-                                        width: parent.width - 12px;
-                                        height: parent.height;
-                                        text: root.new-tag-input;
-                                        color: root.theme.text;
-                                        font-size: 11px;
-                                        vertical-alignment: center;
-                                        edited => {
-                                            root.new-tag-input = self.text;
-                                            root.filter-tag-suggestions(self.text);
-                                        }
-                                        accepted => {
-                                            if self.text != "" {
-                                                root.add-tag(self.text);
-                                                self.text = "";
-                                                root.new-tag-input = "";
-                                                root.show-tag-suggestions = false;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Auto-suggest dropdown popup
-                                if root.show-tag-suggestions && root.tag-suggestions.length > 0 : Rectangle {
-                                    x: 0px;
-                                    y: parent.height + 2px;
-                                    width: 140px;
-                                    z: 100;
-                                    background: root.theme.mantle;
-                                    border-radius: 2px;
-                                    border-width: 1px;
-                                    border-color: root.theme.accent;
-
-                                    VerticalLayout {
-                                        padding: 3px;
-                                        spacing: 2px;
-                                        for sugg in root.tag-suggestions : Rectangle {
-                                            height: 22px;
-                                            background: sugg-touch.has-hover ? root.theme.accent.transparentize(85%) : #00000000;
-                                            border-radius: 2px;
-
-                                            sugg-touch := TouchArea {
-                                                clicked => {
-                                                    root.apply-tag-suggestion(sugg);
-                                                    tag-in.text = "";
-                                                }
-                                                mouse-cursor: pointer;
-                                            }
-
-                                            HorizontalLayout {
-                                                padding-left: 6px;
-                                                padding-right: 6px;
-                                                spacing: 4px;
-                                                alignment: start;
-
-                                                Text {
-                                                    text: "#" + sugg;
-                                                    color: sugg-touch.has-hover ? root.theme.accent : root.theme.text;
-                                                    font-size: 11px;
-                                                    font-weight: 500;
-                                                    vertical-alignment: center;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
@@ -2360,13 +2422,11 @@ export component AppWindow inherits Window {
                             clicked => { root.delete-paper(); }
                         }
                     }
-
-                    // Stretcher
-                    Rectangle { vertical-stretch: 1; }
                 }
             }
         }
     }
+}
 
     // =========================================================================
     // 3. METRO SETTINGS & VAULTS MODAL (PIVOT OVERLAY)

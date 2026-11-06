@@ -378,7 +378,8 @@ export component AppWindow inherits Window {
     in-out property <[SlintCategoryItem]> field-categories: [];
     in-out property <[SlintCategoryItem]> project-categories: [];
     in-out property <[SlintCategoryItem]> tag-categories: [];
-    in-out property <string> active-tag: "";
+    in-out property <[string]> filter-tags: [];
+    in-out property <int> filter-tags-count: 0;
     in-out property <bool> show-tag-flyout: false;
     in-out property <int> tag-sort-mode: 0; // 0: By Count, 1: By Alphabetical
     in-out property <[string]> tag-suggestions: [];
@@ -422,6 +423,7 @@ export component AppWindow inherits Window {
     callback select-all-filter-stars();
     callback clear-filters();
     callback select-tag(string);
+    callback clear-filter-tags();
     callback toggle-tag-flyout();
     callback set-tag-sort-mode(int);
     callback filter-tag-suggestions(string);

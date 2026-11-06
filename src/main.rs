@@ -109,7 +109,6 @@ fn sync_ui(ui: &AppWindow, state: &AppState) {
     ui.set_active_perspective(state.active_perspective.clone().into());
     ui.set_active_field(state.active_field.clone().unwrap_or_default().into());
     ui.set_active_project(state.active_project.clone().unwrap_or_default().into());
-    ui.set_active_tag(state.active_tag.clone().unwrap_or_default().into());
     ui.set_tag_sort_mode(state.tag_sort_mode);
 
     // 3. Category Lists (Fields, Projects, and Tags)
@@ -119,6 +118,7 @@ fn sync_ui(ui: &AppWindow, state: &AppState) {
         .map(|(name, count)| SlintCategoryItem {
             name: name.into(),
             count: count as i32,
+            is_selected: false,
         })
         .collect();
     ui.set_field_categories(ModelRc::new(VecModel::from(field_items)));
@@ -129,6 +129,7 @@ fn sync_ui(ui: &AppWindow, state: &AppState) {
         .map(|(name, count)| SlintCategoryItem {
             name: name.into(),
             count: count as i32,
+            is_selected: false,
         })
         .collect();
     ui.set_project_categories(ModelRc::new(VecModel::from(proj_items)));
@@ -136,12 +137,24 @@ fn sync_ui(ui: &AppWindow, state: &AppState) {
     let tag_items: Vec<SlintCategoryItem> = state
         .tag_counts()
         .into_iter()
-        .map(|(name, count)| SlintCategoryItem {
-            name: name.into(),
-            count: count as i32,
+        .map(|(name, count)| {
+            let is_sel = state.is_tag_filtered(&name);
+            SlintCategoryItem {
+                name: name.into(),
+                count: count as i32,
+                is_selected: is_sel,
+            }
         })
         .collect();
     ui.set_tag_categories(ModelRc::new(VecModel::from(tag_items)));
+
+    let filter_tags_models: Vec<slint::SharedString> = state
+        .filter_tags
+        .iter()
+        .map(|s| s.clone().into())
+        .collect();
+    ui.set_filter_tags(ModelRc::new(VecModel::from(filter_tags_models)));
+    ui.set_filter_tags_count(state.filter_tags.len() as i32);
 
     // 4. Filtered Items in Main List View
     let filtered = state.filtered_items();
@@ -351,7 +364,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             state.active_perspective = "all".to_string();
             state.active_field = None;
             state.active_project = None;
-            state.active_tag = None;
+            state.clear_filter_tags();
             state.clear_filter_stars();
             state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
@@ -773,14 +786,27 @@ fn main() -> Result<(), Box<dyn Error>> {
         });
     }
 
-    // 18b. Select / Toggle Tag Filter
+    // 18b. Select / Toggle Tag Filter (Multi-select)
     {
         let ui_handle = ui.as_weak();
         let state_rc = state.clone();
         ui.on_select_tag(move |tag| {
             let mut state = state_rc.lock().unwrap();
-            let trimmed = tag.trim().to_string();
-            state.set_active_tag(if trimmed.is_empty() { None } else { Some(trimmed) });
+            state.toggle_filter_tag(&tag);
+            state.selected_id = None;
+            if let Some(ui) = ui_handle.upgrade() {
+                sync_ui(&ui, &state);
+            }
+        });
+    }
+
+    // 18b2. Clear All Filter Tags
+    {
+        let ui_handle = ui.as_weak();
+        let state_rc = state.clone();
+        ui.on_clear_filter_tags(move || {
+            let mut state = state_rc.lock().unwrap();
+            state.clear_filter_tags();
             state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
                 sync_ui(&ui, &state);
@@ -810,9 +836,13 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let tag_items: Vec<SlintCategoryItem> = state
                     .tag_counts()
                     .into_iter()
-                    .map(|(name, count)| SlintCategoryItem {
-                        name: name.into(),
-                        count: count as i32,
+                    .map(|(name, count)| {
+                        let is_sel = state.is_tag_filtered(&name);
+                        SlintCategoryItem {
+                            name: name.into(),
+                            count: count as i32,
+                            is_selected: is_sel,
+                        }
                     })
                     .collect();
                 ui.set_tag_categories(ModelRc::new(VecModel::from(tag_items)));
