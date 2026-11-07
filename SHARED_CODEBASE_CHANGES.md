@@ -299,4 +299,128 @@ This section documents the macOS platform-specific UI refinements and shared cod
 
 ---
 
-*Document version: 0.8.0 — Updated for macOS Phase 5 & cross-platform synchronization.*
+## 5. [2026-11-06] Tag Aggregation, Suggestions & Explorer Integration (v0.9.0)
+
+This section documents the introduction of the Tag system: backend frequency aggregation, real-time auto-suggestions, and bottom bar flyout exploration.
+
+### 5.1 UX & Information Architecture Philosophy
+1. **Separation from Primary Hierarchies**:
+   - In literature management, **Field (领域)** is top-level academic taxonomy and **Project (项目)** is contextual task tracking. These remain primary navigation trees in the left sidebar.
+   - **Tags (标签)** are granular, flat, and numerous (often dozens or hundreds per vault). Embedding them directly as permanent sidebar trees would bloat the sidebar and disrupt visual hierarchy.
+   - Therefore, Tag exploration is implemented via a lightweight button at the bottom of the left sidebar, which summons a non-intrusive Flyout / Popover panel on demand.
+2. **Multi-Select Tag Filtering (AND Logic)**:
+   - Papers frequently carry multiple tags (e.g. `optics` + `photodetector`). A single-select tag filter is overly restrictive for literature discovery.
+   - Tag filtering supports **multi-selection**: selecting multiple tags filters papers matching *all* selected tags (intersection / AND logic).
+   - The flyout shows a clear summary banner with chips for all active tags, with individual removal (`xmark`) as well as a one-click "Clear All" (`清除全部`) action.
+3. **Preventing Tag Fragmentation & Typos (Auto-Suggest)**:
+   - Without suggestions, users frequently create slightly mismatched tags (e.g. `laser`, `Lasers`, `laser-source`).
+   - Typing in the inspector now displays real-time auto-complete candidates derived from the backend's known tag frequency list, prioritizing prefix matches and higher-frequency usage.
+4. **UI Consistency & Asset Reuse**:
+   - The tag display in the flyout reuses the existing `TagChip` / `MetroTagChip` styling from the right inspector, replacing the deletion cross with a literature count badge (`[count]`).
+   - Tags and projects are arranged in priority **horizontal wrapping layouts** (`FlexboxLayout` with `flex-wrap: wrap`) to maximize space efficiency instead of wasting vertical space on one-tag-per-line layouts.
+   - Individual chips feature automatic text ellipsis (`overflow: elide;`) to prevent overflowing right inspector bounds.
+   - Added unified vector icon `ui/icons/tag.svg` (24x24 Lucide stroke style) for dual-platform reuse.
+
+---
+
+### 5.2 Shared Rust Core Changes (`src/state.rs`, `src/main.rs`, `ui/models.slint`)
+1. **State Management (`src/state.rs`)**:
+   - `pub filter_tags: Vec<String>`: Multi-select active tag filters.
+   - `pub fn toggle_filter_tag(&mut self, tag: &str)`: Adds or removes a tag from the active filter set.
+   - `pub fn clear_filter_tags(&mut self)`: Clears all active tag filters.
+   - `pub fn is_tag_filtered(&self, tag: &str) -> bool`: Checks if a specific tag is currently active.
+   - Integrated into `filtered_items()`: requires `item.tags` to contain all tags in `filter_tags` (AND intersection).
+   - `pub tag_sort_mode: i32`: `0` for Frequency Descending (count descending, then alphabetical), `1` for Alphabetical (A-Z).
+   - `pub fn tag_counts(&self) -> Vec<(String, usize)>`: Aggregates tags across all non-discarded papers and sorts according to `tag_sort_mode`.
+   - `pub fn get_tag_suggestions(&self, prefix: &str, current_tags: &[String], limit: usize) -> Vec<String>`: Returns candidates matching the prefix (case-insensitive), excluding tags already present on the selected paper.
+   - Unit tests: `test_tag_aggregation_suggestions_and_filter` verifying multi-selection, suggestions, and aggregation.
+2. **UI Synchronization (`sync_ui` in `src/main.rs`)**:
+   - Binds `tag_counts()` to Slint's `tag-categories` model using `SlintCategoryItem { name, count, is_selected }`.
+   - Binds `ui.set_filter_tags_count(...)` and `ui.set_tag_sort_mode(...)`.
+   - Clears `filter_tags` when resetting filters or switching vaults.
+3. **Registered Callbacks (`src/main.rs`)**:
+   - `on_select_tag`: Toggles tag in `filter_tags`.
+   - `on_clear_filter_tags`: Clears all active tag filters.
+   - `on_toggle_tag_flyout`: Toggles flyout visibility.
+   - `on_set_tag_sort_mode`: Updates sort mode (`0` vs `1`) and pushes re-sorted tag list.
+   - `on_filter_tag_suggestions`: Computes candidates matching typed prefix and sets `show_tag_suggestions`.
+   - `on_apply_tag_suggestion`: Commits selected candidate directly into paper frontmatter and closes suggestions.
+
+---
+
+### 5.3 Slint Property & Callback Parity (All UI Definitions)
+The following properties and callbacks are declared across `ui/appwindow_windows.slint`, `ui/appwindow_macos.slint`, and `ui/appwindow.slint`:
+```slint
+// In ui/models.slint
+export struct SlintCategoryItem {
+    name: string,
+    count: int,
+    is_selected: bool,
+}
+
+// In AppWindow definitions:
+// Properties
+in-out property <[SlintCategoryItem]> tag-categories: [];
+in-out property <int> filter-tags-count: 0;
+in-out property <bool> show-tag-flyout: false;
+in-out property <int> tag-sort-mode: 0; // 0: By Count, 1: By Alphabetical
+in-out property <[string]> tag-suggestions: [];
+in-out property <bool> show-tag-suggestions: false;
+
+// Callbacks
+callback select-tag(string);
+callback clear-filter-tags();
+callback toggle-tag-flyout();
+callback set-tag-sort-mode(int);
+callback filter-tag-suggestions(string);
+callback apply-tag-suggestion(string);
+```
+
+---
+
+### 5.4 Windows Metro UI Implementation Details (`ui/appwindow_windows.slint`)
+1. **Metro App Bar Button**:
+   - Added circular `MetroAppBarButton` ("标签" / "Tags") to the bottom of Pane 1, styled alongside Vault Switcher, Sync, and Settings.
+   - Button active state strictly binds to `is-active: root.show-tag-flyout`. When clicking outside to dismiss the flyout, the button immediately restores its default state.
+   - Label color remains readable (`label-color: #2c2523`) in all states.
+2. **Tag Flyout Popover & Light-Dismiss Overlay**:
+   - Rendered as a root-level light-dismiss overlay above the App Bar (`y: parent.height - self.height - 56px`, `height: 330px`, `width: 250px`, `x: 10px`).
+   - Sits strictly within the left sidebar bounds (Pane 1 preferred width 270px) with clean 10px margins on both sides, never protruding into the middle literature stream.
+   - Covered by a full-window transparent backdrop TouchArea: clicking anywhere outside the flyout (Pane 1, middle literature stream, or right inspector) immediately closes the flyout, restoring the Tag button's default visual state.
+   - Header displays total unique tag count and sort mode pills (`按频次` / `Freq` vs `按字母` / `A-Z`).
+   - When one or more tags are active (`filter-tags-count > 0`), shows an active tag bar with removable chips and a `清除全部` button.
+   - Tags container uses `Flickable` with bounded `width: parent.width;` (230px) and `FlexboxLayout { flex-wrap: wrap; spacing: 6px; }`. Tags flow horizontally and cleanly wrap to subsequent lines without being truncated at line ends.
+   - `MetroTagChip` uses `chip-max-width: 215px`, unconstrained child layout without `alignment: center`, `horizontal-stretch: 1; overflow: elide` on `Text`, and `horizontal-stretch: 0` on badges. This guarantees that oversized tag names elide gracefully (`...`) before the count badge without exceeding the 250px container or getting cut off.
+   - Active tags in the cloud highlight with solid accent background and contrasting text color.
+3. **Inspector Layout & Dimensions**:
+   - Pane 3 width set to `preferred-width: 340px` (`min-width: 320px`, `max-width: 400px`, `horizontal-stretch: 0`), restoring balanced proportions with the literature stream.
+   - All internal buttons (`MetroButton`) feature `overflow: elide` and adaptive horizontal padding (`padding-h`), completely resolving button truncation in English mode (e.g. "AI-Skimmed", "Deep-Read", "Discarded", "Copy BibTeX", "Unrated").
+   - Inspector is wrapped in a vertical `Flickable` to avoid overflow on smaller screen heights.
+   - Section headers (PROJECTS, TAGS) and input rows have dedicated heights and spacing (`spacing: 6px; alignment: start;`), eliminating awkward gaps when 0 items exist.
+   - Projects and tags use `FlexboxLayout { flex-wrap: wrap; }` with `overflow: elide` on `MetroTagChip`, guaranteeing that chips wrap within inspector boundaries and never escape the window.
+   - Auto-suggest candidates are rendered directly **in-flow** within the Tags section (below the input row and above existing tags). This prevents candidates from ever being obscured by the subsequent "System Operations" block.
+4. **Enhanced `MetroTagChip`**:
+   - Added `has-count: bool`, `count: int`, `clickable: bool`, `removable: bool`, and `callback clicked()`.
+   - Text label configured with `horizontal-stretch: 1; overflow: elide` while badge and close icons stay pinned with `horizontal-stretch: 0`.
+5. **Middle Stream Reset Button Hover Styling**:
+   - The middle column reset filter button's hover state binds to `hover-bg: root.theme.red` with `#ffffff` icon inversion, aligning with standard warning/destructive feedback semantics across themes rather than primary accent colors.
+
+---
+
+### 5.5 Guidelines for macOS Implementation
+When wiring the macOS UI in `ui/appwindow_macos.slint` / `ui/appwindow.slint`:
+1. **Left Sidebar Button**:
+   - Place a Tag button in the bottom control bar alongside Vault and Reload buttons (`ui/icons/tag.svg`), preserving Apple HIG aesthetics.
+2. **Popover Panel**:
+   - Use a floating card with `root.theme.mantle` background, subtle border, and rounded corners (`border-radius: 8px`).
+   - Display sort switch controls (segmented control or pill buttons) and bind to `root.set-tag-sort-mode(mode)`.
+   - Render tag chips using `TagChip` with count badges in a wrapping `FlexboxLayout`, binding clicks to `root.select-tag(cat.name)`.
+   - Support multi-selection by rendering active tags in highlighted state and including a clear button bound to `root.clear-filter-tags()`.
+3. **Inspector Auto-Suggest & Tag Cloud**:
+   - Position suggestions in-flow or in an overlay container under the tag `TextInput`.
+   - Render suggestion chips and bind clicks to `root.apply-tag-suggestion(sugg)`.
+   - Wrap projects and tags in `FlexboxLayout` with eliding text to ensure clean responsive behavior.
+
+---
+
+*Document version: 0.9.0 — Updated for Multi-Select Tag Filtering, Auto-Suggest & Dual-Platform Coordination.*

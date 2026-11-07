@@ -109,14 +109,16 @@ fn sync_ui(ui: &AppWindow, state: &AppState) {
     ui.set_active_perspective(state.active_perspective.clone().into());
     ui.set_active_field(state.active_field.clone().unwrap_or_default().into());
     ui.set_active_project(state.active_project.clone().unwrap_or_default().into());
+    ui.set_tag_sort_mode(state.tag_sort_mode);
 
-    // 3. Category Lists (Fields and Projects)
+    // 3. Category Lists (Fields, Projects, and Tags)
     let field_items: Vec<SlintCategoryItem> = state
         .field_counts()
         .into_iter()
         .map(|(name, count)| SlintCategoryItem {
             name: name.into(),
             count: count as i32,
+            is_selected: false,
         })
         .collect();
     ui.set_field_categories(ModelRc::new(VecModel::from(field_items)));
@@ -127,9 +129,32 @@ fn sync_ui(ui: &AppWindow, state: &AppState) {
         .map(|(name, count)| SlintCategoryItem {
             name: name.into(),
             count: count as i32,
+            is_selected: false,
         })
         .collect();
     ui.set_project_categories(ModelRc::new(VecModel::from(proj_items)));
+
+    let tag_items: Vec<SlintCategoryItem> = state
+        .tag_counts()
+        .into_iter()
+        .map(|(name, count)| {
+            let is_sel = state.is_tag_filtered(&name);
+            SlintCategoryItem {
+                name: name.into(),
+                count: count as i32,
+                is_selected: is_sel,
+            }
+        })
+        .collect();
+    ui.set_tag_categories(ModelRc::new(VecModel::from(tag_items)));
+
+    let filter_tags_models: Vec<slint::SharedString> = state
+        .filter_tags
+        .iter()
+        .map(|s| s.clone().into())
+        .collect();
+    ui.set_filter_tags(ModelRc::new(VecModel::from(filter_tags_models)));
+    ui.set_filter_tags_count(state.filter_tags.len() as i32);
 
     // 4. Filtered Items in Main List View
     let filtered = state.filtered_items();
@@ -218,6 +243,7 @@ fn sync_inspector(ui: &AppWindow, state: &AppState) {
         ui.set_inspector_has_pdf(false);
         ui.set_inspector_has_note(false);
         ui.set_inspector_missing_pdf(false);
+        ui.set_show_tag_suggestions(false);
     }
 }
 
@@ -338,6 +364,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             state.active_perspective = "all".to_string();
             state.active_field = None;
             state.active_project = None;
+            state.clear_filter_tags();
             state.clear_filter_stars();
             state.selected_id = None;
             if let Some(ui) = ui_handle.upgrade() {
@@ -345,6 +372,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 #[cfg(target_os = "windows")]
                 ui.set_search_expanded(false);
                 ui.set_star_filter_open(false);
+                ui.set_show_tag_suggestions(false);
                 sync_ui(&ui, &state);
             }
         });
@@ -735,6 +763,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 });
             }
             if let Some(ui) = ui_handle.upgrade() {
+                ui.set_show_tag_suggestions(false);
                 sync_ui(&ui, &state);
             }
         });
@@ -752,6 +781,113 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
             });
             if let Some(ui) = ui_handle.upgrade() {
+                sync_ui(&ui, &state);
+            }
+        });
+    }
+
+    // 18b. Select / Toggle Tag Filter (Multi-select)
+    {
+        let ui_handle = ui.as_weak();
+        let state_rc = state.clone();
+        ui.on_select_tag(move |tag| {
+            let mut state = state_rc.lock().unwrap();
+            state.toggle_filter_tag(&tag);
+            state.selected_id = None;
+            if let Some(ui) = ui_handle.upgrade() {
+                sync_ui(&ui, &state);
+            }
+        });
+    }
+
+    // 18b2. Clear All Filter Tags
+    {
+        let ui_handle = ui.as_weak();
+        let state_rc = state.clone();
+        ui.on_clear_filter_tags(move || {
+            let mut state = state_rc.lock().unwrap();
+            state.clear_filter_tags();
+            state.selected_id = None;
+            if let Some(ui) = ui_handle.upgrade() {
+                sync_ui(&ui, &state);
+            }
+        });
+    }
+
+    // 18c. Toggle Tag Flyout
+    {
+        let ui_handle = ui.as_weak();
+        ui.on_toggle_tag_flyout(move || {
+            if let Some(ui) = ui_handle.upgrade() {
+                let cur = ui.get_show_tag_flyout();
+                ui.set_show_tag_flyout(!cur);
+            }
+        });
+    }
+
+    // 18d. Set Tag Sort Mode
+    {
+        let ui_handle = ui.as_weak();
+        let state_rc = state.clone();
+        ui.on_set_tag_sort_mode(move |mode| {
+            let mut state = state_rc.lock().unwrap();
+            state.tag_sort_mode = mode;
+            if let Some(ui) = ui_handle.upgrade() {
+                let tag_items: Vec<SlintCategoryItem> = state
+                    .tag_counts()
+                    .into_iter()
+                    .map(|(name, count)| {
+                        let is_sel = state.is_tag_filtered(&name);
+                        SlintCategoryItem {
+                            name: name.into(),
+                            count: count as i32,
+                            is_selected: is_sel,
+                        }
+                    })
+                    .collect();
+                ui.set_tag_categories(ModelRc::new(VecModel::from(tag_items)));
+                ui.set_tag_sort_mode(mode);
+            }
+        });
+    }
+
+    // 18e. Filter Tag Suggestions
+    {
+        let ui_handle = ui.as_weak();
+        let state_rc = state.clone();
+        ui.on_filter_tag_suggestions(move |prefix| {
+            let state = state_rc.lock().unwrap();
+            let current_tags = state
+                .selected_item()
+                .map(|i| i.metadata.tags.clone())
+                .unwrap_or_default();
+            let suggestions = state.get_tag_suggestions(&prefix, &current_tags, 6);
+            if let Some(ui) = ui_handle.upgrade() {
+                let has_sugg = !suggestions.is_empty();
+                let sugg_models: Vec<slint::SharedString> = suggestions.into_iter().map(Into::into).collect();
+                ui.set_tag_suggestions(ModelRc::new(VecModel::from(sugg_models)));
+                ui.set_show_tag_suggestions(has_sugg);
+            }
+        });
+    }
+
+    // 18f. Apply Tag Suggestion
+    {
+        let ui_handle = ui.as_weak();
+        let state_rc = state.clone();
+        ui.on_apply_tag_suggestion(move |sugg| {
+            let mut state = state_rc.lock().unwrap();
+            let t = sugg.trim().to_string();
+            if !t.is_empty() {
+                let _ = state.mutate_selected(|meta| {
+                    if !meta.tags.contains(&t) {
+                        meta.tags.push(t);
+                    }
+                });
+            }
+            if let Some(ui) = ui_handle.upgrade() {
+                ui.set_new_tag_input("".into());
+                ui.set_show_tag_suggestions(false);
                 sync_ui(&ui, &state);
             }
         });
