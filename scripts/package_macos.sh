@@ -6,11 +6,12 @@ echo " Packaging lx Index for macOS (Apple Silicon)"
 echo "============================================="
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VERSION="$(grep '^version' "${PROJECT_ROOT}/Cargo.toml" | head -n1 | cut -d '"' -f2)"
 RELEASE_BIN="${PROJECT_ROOT}/target/release/lx-index"
 DIST_DIR="${PROJECT_ROOT}/target/release/bundle/osx"
 APP_NAME="lx Index.app"
 APP_DIR="${DIST_DIR}/${APP_NAME}"
-DMG_PATH="${PROJECT_ROOT}/target/release/lx-index-0.9.0-macOS.dmg"
+DMG_PATH="${PROJECT_ROOT}/target/release/lx-index-${VERSION}-macOS.dmg"
 
 # 1. Always build latest release binary
 echo "Building release binary with cargo build --release..."
@@ -27,7 +28,7 @@ cp "${RELEASE_BIN}" "${APP_DIR}/Contents/MacOS/lx-index"
 chmod +x "${APP_DIR}/Contents/MacOS/lx-index"
 
 # 4. Generate Info.plist
-cat > "${APP_DIR}/Contents/Info.plist" << 'EOF'
+cat > "${APP_DIR}/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -54,7 +55,7 @@ cat > "${APP_DIR}/Contents/Info.plist" << 'EOF'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.9.0</string>
+    <string>${VERSION}</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
