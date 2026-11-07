@@ -458,6 +458,19 @@ unsafe fn setup_or_update_traffic_lights_overlay(win: *mut std::ffi::c_void, is_
         return;
     }
     let sel_btn = sel_registerName(b"standardWindowButton:\0".as_ptr() as *const _);
+    let sel_responds = sel_registerName(b"respondsToSelector:\0".as_ptr() as *const _);
+    let msg_send_responds: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, *const std::ffi::c_void) -> bool =
+        std::mem::transmute(objc_msgSend.as_ptr());
+
+    // Safely resolve the target window instance and verify it responds to standardWindowButton:
+    let target_win = if msg_send_responds(win, sel_responds as _, sel_btn as _) {
+        win
+    } else if !MAIN_WINDOW.is_null() && msg_send_responds(MAIN_WINDOW, sel_responds as _, sel_btn as _) {
+        MAIN_WINDOW
+    } else {
+        return;
+    };
+
     let msg_send_btn: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, usize) -> *mut std::ffi::c_void =
         std::mem::transmute(objc_msgSend.as_ptr());
     let sel_set_wants_layer = sel_registerName(b"setWantsLayer:\0".as_ptr() as *const _);
@@ -497,7 +510,7 @@ unsafe fn setup_or_update_traffic_lights_overlay(win: *mut std::ffi::c_void, is_
     let cg_border = if !border_color.is_null() { msg_send_obj(border_color, sel_cg_color as _) } else { std::ptr::null_mut() };
 
     for btn_id in 0..3 {
-        let btn = msg_send_btn(win, sel_btn as _, btn_id);
+        let btn = msg_send_btn(target_win, sel_btn as _, btn_id);
         if btn.is_null() {
             continue;
         }
@@ -542,15 +555,17 @@ unsafe extern "C" fn on_window_did_become_key(
     _cmd: *mut std::ffi::c_void,
     notification: *mut std::ffi::c_void,
 ) {
-    let sel_object = sel_registerName(b"object\0".as_ptr() as *const _);
-    let msg_send_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
-        std::mem::transmute(objc_msgSend.as_ptr());
-    let win = if !notification.is_null() {
-        msg_send_obj(notification, sel_object as _)
-    } else {
-        MAIN_WINDOW
-    };
-    setup_or_update_traffic_lights_overlay(win, true);
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let sel_object = sel_registerName(b"object\0".as_ptr() as *const _);
+        let msg_send_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
+            std::mem::transmute(objc_msgSend.as_ptr());
+        let win = if !notification.is_null() {
+            msg_send_obj(notification, sel_object as _)
+        } else {
+            MAIN_WINDOW
+        };
+        setup_or_update_traffic_lights_overlay(win, true);
+    }));
 }
 
 #[cfg(target_os = "macos")]
@@ -559,15 +574,17 @@ unsafe extern "C" fn on_window_did_resign_key(
     _cmd: *mut std::ffi::c_void,
     notification: *mut std::ffi::c_void,
 ) {
-    let sel_object = sel_registerName(b"object\0".as_ptr() as *const _);
-    let msg_send_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
-        std::mem::transmute(objc_msgSend.as_ptr());
-    let win = if !notification.is_null() {
-        msg_send_obj(notification, sel_object as _)
-    } else {
-        MAIN_WINDOW
-    };
-    setup_or_update_traffic_lights_overlay(win, false);
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let sel_object = sel_registerName(b"object\0".as_ptr() as *const _);
+        let msg_send_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
+            std::mem::transmute(objc_msgSend.as_ptr());
+        let win = if !notification.is_null() {
+            msg_send_obj(notification, sel_object as _)
+        } else {
+            MAIN_WINDOW
+        };
+        setup_or_update_traffic_lights_overlay(win, false);
+    }));
 }
 
 #[cfg(target_os = "macos")]
@@ -576,21 +593,39 @@ unsafe extern "C" fn on_app_did_become_active(
     _cmd: *mut std::ffi::c_void,
     _notification: *mut std::ffi::c_void,
 ) {
-    // When switching back from another Space, un-minimizing, or gaining focus:
-    // Re-assert our global main menu so macOS never drops or empties the menu bar!
-    if !GLOBAL_MAIN_MENU.is_null() {
-        let ns_app_cls = objc_getClass(b"NSApplication\0".as_ptr() as *const _);
-        let sel_shared_app = sel_registerName(b"sharedApplication\0".as_ptr() as *const _);
-        let msg_send_obj: unsafe extern "C" fn(*const std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
-            std::mem::transmute(objc_msgSend.as_ptr());
-        let app = msg_send_obj(ns_app_cls as _, sel_shared_app as _);
-        if !app.is_null() {
-            let sel_set_main_menu = sel_registerName(b"setMainMenu:\0".as_ptr() as *const _);
-            let msg_send_void_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, *mut std::ffi::c_void) =
-                std::mem::transmute(objc_msgSend.as_ptr());
-            msg_send_void_obj(app, sel_set_main_menu as _, GLOBAL_MAIN_MENU);
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        if !MAIN_WINDOW.is_null() {
+            setup_or_update_traffic_lights_overlay(MAIN_WINDOW, true);
         }
-    }
+        // When switching back from another Space, un-minimizing, or gaining focus:
+        // Re-assert our global main menu so macOS never drops or empties the menu bar!
+        if !GLOBAL_MAIN_MENU.is_null() {
+            let ns_app_cls = objc_getClass(b"NSApplication\0".as_ptr() as *const _);
+            let sel_shared_app = sel_registerName(b"sharedApplication\0".as_ptr() as *const _);
+            let msg_send_obj: unsafe extern "C" fn(*const std::ffi::c_void, *const std::ffi::c_void) -> *mut std::ffi::c_void =
+                std::mem::transmute(objc_msgSend.as_ptr());
+            let app = msg_send_obj(ns_app_cls as _, sel_shared_app as _);
+            if !app.is_null() {
+                let sel_set_main_menu = sel_registerName(b"setMainMenu:\0".as_ptr() as *const _);
+                let msg_send_void_obj: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, *mut std::ffi::c_void) =
+                    std::mem::transmute(objc_msgSend.as_ptr());
+                msg_send_void_obj(app, sel_set_main_menu as _, GLOBAL_MAIN_MENU);
+            }
+        }
+    }));
+}
+
+#[cfg(target_os = "macos")]
+unsafe extern "C" fn on_app_did_resign_active(
+    _this: *mut std::ffi::c_void,
+    _cmd: *mut std::ffi::c_void,
+    _notification: *mut std::ffi::c_void,
+) {
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        if !MAIN_WINDOW.is_null() {
+            setup_or_update_traffic_lights_overlay(MAIN_WINDOW, false);
+        }
+    }));
 }
 
 #[cfg(target_os = "macos")]
@@ -622,7 +657,7 @@ unsafe fn get_or_create_action_handler() -> *mut std::ffi::c_void {
                 (b"windowDidResignKey:\0", on_window_did_resign_key),
                 (b"windowDidBecomeKey:\0", on_window_did_become_key),
                 (b"appDidBecomeActive:\0", on_app_did_become_active),
-                (b"appDidResignActive:\0", on_window_did_resign_key),
+                (b"appDidResignActive:\0", on_app_did_resign_active),
             ];
             for (sel_name, imp) in methods {
                 let sel = sel_registerName(sel_name.as_ptr() as *const _);
@@ -1009,6 +1044,14 @@ unsafe fn apply_vibrancy_to_nswindow(window: *mut std::ffi::c_void) {
         };
         msg_send_set_rect(content_view, sel_set_frame as _, full_rect);
     }
+
+    // Invalidate window shadow so WindowServer recalculates standard native window shadow
+    let sel_set_has_shadow = sel_registerName(b"setHasShadow:\0".as_ptr() as *const _);
+    let sel_invalidate_shadow = sel_registerName(b"invalidateShadow\0".as_ptr() as *const _);
+    msg_send_bool(window, sel_set_has_shadow as _, true);
+    let msg_send_void: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) =
+        std::mem::transmute(objc_msgSend.as_ptr());
+    msg_send_void(window, sel_invalidate_shadow as _);
 }
 
 #[cfg(not(target_os = "macos"))]

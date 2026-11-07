@@ -27,7 +27,7 @@ $CargoToml = Get-Content (Join-Path $ProjectRoot "Cargo.toml") -Raw
 if ($CargoToml -match 'version\s*=\s*"([^"]+)"') {
     $Version = $matches[1]
 } else {
-    $Version = "0.9.0"
+    $Version = "1.0.0"
 }
 $ReleaseExe = Join-Path $ProjectRoot "target\release\lx-index.exe"
 $DistDir = Join-Path $ProjectRoot "target\release\bundle\windows\lx-index-windows-x64"
