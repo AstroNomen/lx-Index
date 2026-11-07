@@ -33,6 +33,10 @@ $ReleaseExe = Join-Path $ProjectRoot "target\release\lx-index.exe"
 $DistDir = Join-Path $ProjectRoot "target\release\bundle\windows\lx-index-windows-x64"
 $ZipOutput = Join-Path $ProjectRoot "target\release\lx-index-$Version-windows-x64.zip"
 
+# Ensure running instance is closed before building so cargo can overwrite target\release\lx-index.exe
+Get-Process lx-index -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 300
+
 # 1. Build release binary if requested or missing
 if (-not $SkipBuild -or -not (Test-Path $ReleaseExe)) {
     Write-Host "[1/4] Compiling optimized release binary (cargo build --release)..." -ForegroundColor Yellow
@@ -46,8 +50,7 @@ if (-not $SkipBuild -or -not (Test-Path $ReleaseExe)) {
 
 # 2. Setup Staging Directory
 Write-Host "[2/4] Setting up portable distribution folder at: $DistDir" -ForegroundColor Yellow
-Get-Process lx-index -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Milliseconds 300
+Start-Sleep -Milliseconds 200
 
 if (Test-Path $DistDir) {
     Remove-Item -Recurse -Force $DistDir
