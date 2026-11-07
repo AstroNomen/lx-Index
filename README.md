@@ -3,9 +3,13 @@
   <h1>lx-Index</h1>
   <p>Local-first literature management HUD and workspace for academic researchers.</p>
 
-  <p>
+<p>
+    <a href="README.md">English</a> | <a href="README_zh.md">简体中文</a>
+  </p>
+
+<p>
     <a href="https://github.com/AstroNomen/lx-Index/releases"><img src="https://img.shields.io/github/v/release/AstroNomen/lx-Index?style=flat-square" alt="Latest Release" /></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue.svg?style=flat-square" alt="License: GPL-3.0" /></a>
     <img src="https://img.shields.io/badge/rust-2021%20edition-orange.svg?style=flat-square" alt="Rust Edition" />
     <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg?style=flat-square" alt="Platform Support" />
   </p>
@@ -21,6 +25,15 @@ The application delivers platform-native user experiences with decoupled interfa
 
 ---
 
+## System Requirements
+
+| Platform    | Minimum OS Version                              | Supported Architecture    | Prebuilt Binary       | Notes                                                                      |
+| ----------- | ----------------------------------------------- | ------------------------- | --------------------- | -------------------------------------------------------------------------- |
+| **macOS**   | macOS 11.0 (Big Sur)+                           | Apple Silicon (`aarch64`) | Yes (`.dmg`)          | M1/M2/M3/M4 chips supported. Intel (`x86_64`) Macs must build from source. |
+| **Windows** | Windows 10 (1809+ / Build 17763+) or Windows 11 | x86_64 (64-bit)           | Yes (`.zip` portable) | 32-bit x86 architecture is not supported.                                  |
+
+---
+
 ## Features
 
 - **Local Filesystem as Single Source of Truth**: Scans folder structures directly. Documents, PDFs, and notes remain standard files on disk without binary database encapsulation.
@@ -33,25 +46,28 @@ The application delivers platform-native user experiences with decoupled interfa
 
 ---
 
-## Quick Start & Installation
+## Installation & Quick Start
 
 Pre-compiled binary releases are available on the [Releases](https://github.com/AstroNomen/lx-Index/releases) page.
 
 ### macOS (Apple Silicon)
 
-1. Download `lx-index-<version>-macOS.dmg`.
+1. Download `lx-index-1.0.0-macOS.dmg`.
 2. Open the disk image and drag `lx Index.app` into your `/Applications` directory.
 3. **Gatekeeper Notice**: Because community open-source binaries are not signed with a paid Apple Developer ID certificate, macOS Gatekeeper may display a verification warning on first launch. To bypass:
    - Right-click (or Control-click) `lx Index.app` in `/Applications` and select **Open**; or
-   - Run the following terminal command to remove the quarantine flag:
+   - Run the following terminal command to remove the quarantine attribute:
+
      ```bash
      xattr -cr "/Applications/lx Index.app"
      ```
 
+*Intel Mac Users*: Prebuilt DMG binaries are compiled for Apple Silicon (`aarch64`). To run on an Intel Mac, please build from source following the instructions below.
+
 ### Windows (x64)
 
-1. Download `lx-index-<version>-windows-x64.zip`.
-2. Extract the archive to any directory.
+1. Download `lx-index-1.0.0-windows-x64.zip`.
+2. Extract the archive to any folder.
 3. Run `lx-index.exe` directly.
    - The application runs portably without requiring installation or administrative privileges.
 
@@ -68,8 +84,9 @@ cd lx-Index
 cargo build --release
 ```
 
-The resulting binary will be located at:
-- **macOS / Linux**: `target/release/lx-index`
+The compiled binary will be located at:
+
+- **macOS**: `target/release/lx-index`
 - **Windows**: `target/release/lx-index.exe`
 
 ---
@@ -131,14 +148,14 @@ Personal reading notes and experimental thoughts start here.
 Everything below the closing frontmatter delimiter is preserved byte-for-byte.
 ```
 
-### Status Codes
+### Literature Status Codes
 
-| Code | Value | Description |
-|---|---|---|
-| `0` | Unread | Pending literature backlog |
-| `1` | Skimmed | Rapidly reviewed or AI-summarized |
-| `2` | Deep-Read | Fully read and digested |
-| `3` | Discarded | Filtered out of active review streams |
+| Code | Value     | Description                           |
+| ---- | --------- | ------------------------------------- |
+| `0`  | Unread    | Pending literature backlog            |
+| `1`  | Skimmed   | Rapidly reviewed or AI-summarized     |
+| `2`  | Deep-Read | Fully read and digested               |
+| `3`  | Discarded | Filtered out of active review streams |
 
 ---
 
@@ -146,11 +163,10 @@ Everything below the closing frontmatter delimiter is preserved byte-for-byte.
 
 Global settings (registered vault paths, active theme, interface language, and default perspective) are stored in standard operating system configuration paths:
 
-| Platform | Path |
-|---|---|
-| macOS | `~/Library/Application Support/lx-index/config.yaml` |
-| Windows | `%APPDATA%\lx-index\config.yaml` |
-| Linux | `~/.config/lx-index/config.yaml` |
+| Platform | Configuration File Path                              |
+| -------- | ---------------------------------------------------- |
+| macOS    | `~/Library/Application Support/lx-index/config.yaml` |
+| Windows  | `%APPDATA%\lx-index\config.yaml`                     |
 
 Configuration files are human-readable YAML and can be backed up or transferred across workstations.
 
@@ -160,11 +176,13 @@ Configuration files are human-readable YAML and can be backed up or transferred 
 
 Automated scripts are provided in the `scripts/` directory for release packaging:
 
-- **macOS**: Generates signed-ready `.app` bundle and compressed UDZO `.dmg` disk image.
+- **macOS**: Generates `.app` bundle and compressed UDZO `.dmg` disk image:
+
   ```bash
   bash scripts/package_macos.sh
   ```
-- **Windows**: Compiles release binary, formats user guide, and archives standalone portable `.zip`.
+- **Windows**: Compiles release binary and archives standalone portable `.zip`:
+
   ```powershell
   powershell -ExecutionPolicy Bypass -File scripts\package_windows.ps1
   ```
@@ -184,4 +202,4 @@ cargo test
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the **GNU General Public License v3.0** (GPL-3.0). See the [LICENSE](LICENSE) file for the full license text.
