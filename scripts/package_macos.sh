@@ -10,7 +10,7 @@ RELEASE_BIN="${PROJECT_ROOT}/target/release/lx-index"
 DIST_DIR="${PROJECT_ROOT}/target/release/bundle/osx"
 APP_NAME="lx Index.app"
 APP_DIR="${DIST_DIR}/${APP_NAME}"
-DMG_PATH="${PROJECT_ROOT}/target/release/lx-index-0.8.0-macOS.dmg"
+DMG_PATH="${PROJECT_ROOT}/target/release/lx-index-0.9.0-macOS.dmg"
 
 # 1. Always build latest release binary
 echo "Building release binary with cargo build --release..."
@@ -54,7 +54,7 @@ cat > "${APP_DIR}/Contents/Info.plist" << 'EOF'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.8.0</string>
+    <string>0.9.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>

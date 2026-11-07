@@ -299,7 +299,7 @@ This section documents the macOS platform-specific UI refinements and shared cod
 
 ---
 
-## 5. [2026-11-06] Tag Aggregation, Suggestions & Explorer Integration (v0.8.0)
+## 5. [2026-11-06] Tag Aggregation, Suggestions & Explorer Integration (v0.9.0)
 
 This section documents the introduction of the Tag system: backend frequency aggregation, real-time auto-suggestions, and bottom bar flyout exploration.
 
@@ -423,4 +423,4 @@ When wiring the macOS UI in `ui/appwindow_macos.slint` / `ui/appwindow.slint`:
 
 ---
 
-*Document version: 0.8.0 — Updated for Multi-Select Tag Filtering, Auto-Suggest & Dual-Platform Coordination.*
+*Document version: 0.9.0 — Updated for Multi-Select Tag Filtering, Auto-Suggest & Dual-Platform Coordination.*
