@@ -17,6 +17,7 @@ component MetroButton inherits Rectangle {
     in-out property <int> font-weight: 500;
     in-out property <image> icon-src;
     in-out property <bool> has-icon: false;
+    in-out property <length> padding-h: root.has-icon ? 8px : 5px;
     callback clicked();
 
     background: touch.pressed ? root.active-bg : (touch.has-hover ? root.hover-bg : root.base-bg);
@@ -31,9 +32,9 @@ component MetroButton inherits Rectangle {
     }
 
     HorizontalLayout {
-        padding-left: 10px;
-        padding-right: 10px;
-        spacing: 6px;
+        padding-left: root.padding-h;
+        padding-right: root.padding-h;
+        spacing: 5px;
         alignment: center;
 
         if root.has-icon : Image {
@@ -52,6 +53,7 @@ component MetroButton inherits Rectangle {
             font-weight: root.font-weight;
             horizontal-alignment: center;
             vertical-alignment: center;
+            overflow: elide;
         }
     }
 }
@@ -130,7 +132,7 @@ component MetroTagChip inherits Rectangle {
     in-out property <bool> has-count: false;
     in-out property <int> count: 0;
     in-out property <bool> clickable: false;
-    in-out property <length> chip-max-width: 260px;
+    in-out property <length> chip-max-width: 215px;
     callback remove();
     callback clicked();
 
@@ -147,10 +149,9 @@ component MetroTagChip inherits Rectangle {
     }
 
     HorizontalLayout {
-        padding-left: 8px;
-        padding-right: 8px;
-        spacing: 6px;
-        alignment: center;
+        padding-left: 7px;
+        padding-right: 7px;
+        spacing: 5px;
 
         Text {
             text: root.text;
@@ -159,17 +160,20 @@ component MetroTagChip inherits Rectangle {
             font-weight: 500;
             vertical-alignment: center;
             overflow: elide;
+            horizontal-stretch: 1;
         }
 
         if root.has-count : Rectangle {
+            width: count-layout.preferred-width;
             height: 14px;
             border-radius: 7px;
             background: root.text-color.transparentize(82%);
             y: (parent.height - self.height) / 2;
+            horizontal-stretch: 0;
 
-            HorizontalLayout {
-                padding-left: 5px;
-                padding-right: 5px;
+            count-layout := HorizontalLayout {
+                padding-left: 4px;
+                padding-right: 4px;
                 alignment: center;
                 Text {
                     text: root.count;
@@ -189,6 +193,7 @@ component MetroTagChip inherits Rectangle {
             background: rem-touch.has-hover ? #a83232 : #00000018;
             animate background { duration: 100ms; }
             y: (parent.height - self.height) / 2;
+            horizontal-stretch: 0;
 
             Image {
                 source: @image-url("icons/win-close.svg");
@@ -1633,9 +1638,9 @@ export component AppWindow inherits Window {
             // PANE 3: RIGHT METADATA & ACTIONS INSPECTOR
             // =================================================================
             Rectangle {
-                min-width: 260px;
-                preferred-width: 290px;
-                max-width: 320px;
+                min-width: 320px;
+                preferred-width: 340px;
+                max-width: 400px;
                 horizontal-stretch: 0;
                 background: root.theme.mantle;
 
@@ -1844,6 +1849,8 @@ export component AppWindow inherits Window {
 
                             MetroButton {
                                 text: root.strings.status_unread;
+                                font-size: 11px;
+                                padding-h: 3px;
                                 text-color: root.inspector-status == 0 ? #ffffff : root.theme.text;
                                 base-bg: root.inspector-status == 0 ? root.theme.teal : root.theme.surface0;
                                 hover-bg: root.theme.teal.transparentize(50%);
@@ -1855,6 +1862,8 @@ export component AppWindow inherits Window {
 
                             MetroButton {
                                 text: root.strings.status_skimmed;
+                                font-size: 11px;
+                                padding-h: 3px;
                                 text-color: root.inspector-status == 1 ? #ffffff : root.theme.text;
                                 base-bg: root.inspector-status == 1 ? root.theme.accent : root.theme.surface0;
                                 hover-bg: root.theme.accent.transparentize(50%);
@@ -1866,6 +1875,8 @@ export component AppWindow inherits Window {
 
                             MetroButton {
                                 text: root.strings.status_deep;
+                                font-size: 11px;
+                                padding-h: 3px;
                                 text-color: root.inspector-status == 2 ? #ffffff : root.theme.text;
                                 base-bg: root.inspector-status == 2 ? root.theme.green : root.theme.surface0;
                                 hover-bg: root.theme.green.transparentize(50%);
@@ -1877,6 +1888,8 @@ export component AppWindow inherits Window {
 
                             MetroButton {
                                 text: root.strings.status_discarded;
+                                font-size: 11px;
+                                padding-h: 3px;
                                 text-color: root.inspector-status == 3 ? #ffffff : root.theme.text;
                                 base-bg: root.inspector-status == 3 ? root.theme.maroon : root.theme.surface0;
                                 hover-bg: root.theme.maroon.transparentize(50%);
@@ -1905,6 +1918,8 @@ export component AppWindow inherits Window {
 
                             for star in [0, 1, 2, 3, 4, 5] : MetroButton {
                                 text: star == 0 ? root.strings.unrated : star + "★";
+                                font-size: star == 0 ? 10px : 11px;
+                                padding-h: 2px;
                                 text-color: root.inspector-importance == star ? #ffffff : root.theme.text;
                                 base-bg: root.inspector-importance == star ? (star >= 4 ? root.theme.yellow : (star == 1 ? root.theme.red : root.theme.accent)) : root.theme.surface0;
                                 hover-bg: root.theme.surface1;

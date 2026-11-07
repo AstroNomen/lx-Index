@@ -390,17 +390,18 @@ callback apply-tag-suggestion(string);
    - Header displays total unique tag count and sort mode pills (`按频次` / `Freq` vs `按字母` / `A-Z`).
    - When one or more tags are active (`filter-tags-count > 0`), shows an active tag bar with removable chips and a `清除全部` button.
    - Tags container uses `Flickable` with bounded `width: parent.width;` (230px) and `FlexboxLayout { flex-wrap: wrap; spacing: 6px; }`. Tags flow horizontally and cleanly wrap to subsequent lines without being truncated at line ends.
-   - `MetroTagChip` includes `chip-max-width: 210px` and `overflow: elide` to prevent individual oversized tags from breaking container bounds.
+   - `MetroTagChip` uses `chip-max-width: 215px`, unconstrained child layout without `alignment: center`, `horizontal-stretch: 1; overflow: elide` on `Text`, and `horizontal-stretch: 0` on badges. This guarantees that oversized tag names elide gracefully (`...`) before the count badge without exceeding the 250px container or getting cut off.
    - Active tags in the cloud highlight with solid accent background and contrasting text color.
 3. **Inspector Layout & Dimensions**:
-   - Pane 3 width refined to `preferred-width: 290px` (`min-width: 260px`, `max-width: 320px`, `horizontal-stretch: 0`) and `padding: 14px`, restoring aesthetic balance and leaving ample space for the literature stream.
+   - Pane 3 width set to `preferred-width: 340px` (`min-width: 320px`, `max-width: 400px`, `horizontal-stretch: 0`), restoring balanced proportions with the literature stream.
+   - All internal buttons (`MetroButton`) feature `overflow: elide` and adaptive horizontal padding (`padding-h`), completely resolving button truncation in English mode (e.g. "AI-Skimmed", "Deep-Read", "Discarded", "Copy BibTeX", "Unrated").
    - Inspector is wrapped in a vertical `Flickable` to avoid overflow on smaller screen heights.
    - Section headers (PROJECTS, TAGS) and input rows have dedicated heights and spacing (`spacing: 6px; alignment: start;`), eliminating awkward gaps when 0 items exist.
    - Projects and tags use `FlexboxLayout { flex-wrap: wrap; }` with `overflow: elide` on `MetroTagChip`, guaranteeing that chips wrap within inspector boundaries and never escape the window.
    - Auto-suggest candidates are rendered directly **in-flow** within the Tags section (below the input row and above existing tags). This prevents candidates from ever being obscured by the subsequent "System Operations" block.
 4. **Enhanced `MetroTagChip`**:
    - Added `has-count: bool`, `count: int`, `clickable: bool`, `removable: bool`, and `callback clicked()`.
-   - Text label configured with `overflow: elide` to prevent overflow on long tag names.
+   - Text label configured with `horizontal-stretch: 1; overflow: elide` while badge and close icons stay pinned with `horizontal-stretch: 0`.
 5. **Middle Stream Reset Button Hover Styling**:
    - The middle column reset filter button's hover state binds to `hover-bg: root.theme.red` with `#ffffff` icon inversion, aligning with standard warning/destructive feedback semantics across themes rather than primary accent colors.
 
