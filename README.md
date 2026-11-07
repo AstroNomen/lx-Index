@@ -19,9 +19,7 @@
 
 ## Overview
 
-lx-Index is a compiled, local-first literature management desktop application. It treats your local filesystem and directory structure as the single source of truth, eliminating proprietary database dependencies and vendor lock-in. Metadata and annotations are synchronized losslessly through standard Markdown YAML frontmatter.
-
-The application delivers platform-native user experiences with decoupled interfaces: an Apple HIG-compliant three-column HUD on macOS and a Modern/Metro Panorama workspace on Windows.
+lx-Index is a compiled, local-first literature management desktop application. Metadata and annotations are synchronized losslessly through standard Markdown YAML frontmatter.
 
 ---
 
@@ -39,9 +37,6 @@ The application delivers platform-native user experiences with decoupled interfa
 - **Local Filesystem as Single Source of Truth**: Scans folder structures directly. Documents, PDFs, and notes remain standard files on disk without binary database encapsulation.
 - **Lossless Markdown Frontmatter Protocol**: Edits metadata (status, importance rating, field, tags, projects, BibTeX) in Markdown frontmatter while keeping personal reading notes and annotations strictly intact.
 - **Multi-Select Tag Filtering with In-Flow Auto-Suggestions**: Supports multi-tag intersection (AND logic), frequency-based or alphabetical tag cloud aggregation, and real-time candidate completion during editing.
-- **Platform-Tailored Desktop Interfaces**:
-  - **macOS**: Native Apple Human Interface Guidelines 3-column continuous layout, Cocoa AppKit window chrome, transparent tall titlebar with concentric traffic lights, native inactive window states, and full system menu bar controls.
-  - **Windows**: Windows 8 Metro design language with continuous Pivot columns, bottom App Bar controls, and borderless Aero Snap window handling.
 - **Academic Workflow Integration**: One-click BibTeX/Citekey clipboard copying, automatic companion note scaffolding for uncatalogued PDFs, and direct system file manager navigation.
 
 ---
@@ -56,6 +51,7 @@ Pre-compiled binary releases are available on the [Releases](https://github.com/
 2. Open the disk image and drag `lx Index.app` into your `/Applications` directory.
 3. **Gatekeeper Notice**: Because community open-source binaries are not signed with a paid Apple Developer ID certificate, macOS Gatekeeper may display a verification warning on first launch. To bypass:
    - Right-click (or Control-click) `lx Index.app` in `/Applications` and select **Open**; or
+
    - Run the following terminal command to remove the quarantine attribute:
 
      ```bash
@@ -181,6 +177,7 @@ Automated scripts are provided in the `scripts/` directory for release packaging
   ```bash
   bash scripts/package_macos.sh
   ```
+
 - **Windows**: Compiles release binary and archives standalone portable `.zip`:
 
   ```powershell
