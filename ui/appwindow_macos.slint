@@ -1455,9 +1455,9 @@ export component AppWindow inherits Window {
                         background: root.theme.base;
                         border-width: 1px;
                         border-color: root.theme.surface2;
-                        drop-shadow-blur: 18px;
-                        drop-shadow-color: #00000030;
-                        drop-shadow-offset-y: 6px;
+                        drop-shadow-blur: 12px;
+                        drop-shadow-color: #0000001c;
+                        drop-shadow-offset-y: 3px;
 
                         VerticalLayout {
                             padding: 8px;
@@ -2229,8 +2229,9 @@ export component AppWindow inherits Window {
             border-radius: 8px;
             border-width: 1px;
             border-color: root.theme.surface2;
-            drop-shadow-blur: 16px;
-            drop-shadow-color: #00000040;
+            drop-shadow-blur: 12px;
+            drop-shadow-color: #0000001c;
+            drop-shadow-offset-y: 3px;
 
             VerticalLayout {
                 padding: 10px;
@@ -2430,7 +2431,7 @@ export component AppWindow inherits Window {
     // SETTINGS & VAULT MANAGER MODAL OVERLAY
     // ==========================================
     if root.show-settings : Rectangle {
-        background: #0000003b;
+        background: #00000024;
 
         TouchArea {
             // Background blocker
@@ -2443,6 +2444,9 @@ export component AppWindow inherits Window {
             border-radius: 12px;
             border-width: 1px;
             border-color: root.theme.surface1;
+            drop-shadow-blur: 24px;
+            drop-shadow-color: #00000020;
+            drop-shadow-offset-y: 6px;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
 
