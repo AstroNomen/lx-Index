@@ -1497,8 +1497,8 @@ export component AppWindow inherits Window {
                                     icon-src: @image-url("icons/arrow-path.svg");
                                     icon-color: root.theme.reset_fg;
                                     circle-border: root.theme.reset_border;
-                                    hover-bg: root.theme.accent;
-                                    hover-icon-color: root.theme.base;
+                                    hover-bg: root.theme.red;
+                                    hover-icon-color: #ffffff;
                                     clicked => {
                                         search-in.text = "";
                                         root.clear-filters();
@@ -2261,9 +2261,9 @@ export component AppWindow inherits Window {
 
         // Tag Flyout Card (Positioned directly above the bottom App Bar Tag button)
         Rectangle {
-            width: 290px;
-            height: 340px;
-            x: 8px;
+            width: 250px;
+            height: 330px;
+            x: 10px;
             y: parent.height - self.height - 56px;
             background: root.theme.mantle;
             border-radius: 2px;
@@ -2394,7 +2394,7 @@ export component AppWindow inherits Window {
                             for t in root.filter-tags : MetroTagChip {
                                 text: "#" + t;
                                 removable: true;
-                                chip-max-width: 250px;
+                                chip-max-width: 210px;
                                 text-color: root.theme.accent;
                                 base-bg: root.theme.accent.transparentize(75%);
                                 border-col: root.theme.accent;
@@ -2438,7 +2438,7 @@ export component AppWindow inherits Window {
                             has-count: true;
                             count: cat.count;
                             clickable: true;
-                            chip-max-width: 250px;
+                            chip-max-width: 210px;
                             text-color: cat.is-selected ? root.theme.base : root.theme.accent;
                             base-bg: cat.is-selected ? root.theme.accent : root.theme.accent.transparentize(88%);
                             border-col: cat.is-selected ? root.theme.accent : root.theme.accent.transparentize(60%);

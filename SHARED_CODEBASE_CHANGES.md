@@ -384,12 +384,13 @@ callback apply-tag-suggestion(string);
    - Button active state strictly binds to `is-active: root.show-tag-flyout`. When clicking outside to dismiss the flyout, the button immediately restores its default state.
    - Label color remains readable (`label-color: #2c2523`) in all states.
 2. **Tag Flyout Popover & Light-Dismiss Overlay**:
-   - Rendered as a root-level light-dismiss overlay above the App Bar (`y: parent.height - self.height - 56px`, `height: 340px`, `width: 290px`).
+   - Rendered as a root-level light-dismiss overlay above the App Bar (`y: parent.height - self.height - 56px`, `height: 330px`, `width: 250px`, `x: 10px`).
+   - Sits strictly within the left sidebar bounds (Pane 1 preferred width 270px) with clean 10px margins on both sides, never protruding into the middle literature stream.
    - Covered by a full-window transparent backdrop TouchArea: clicking anywhere outside the flyout (Pane 1, middle literature stream, or right inspector) immediately closes the flyout, restoring the Tag button's default visual state.
    - Header displays total unique tag count and sort mode pills (`按频次` / `Freq` vs `按字母` / `A-Z`).
    - When one or more tags are active (`filter-tags-count > 0`), shows an active tag bar with removable chips and a `清除全部` button.
-   - Tags container uses `Flickable` with bounded `width: parent.width;` (270px) and `FlexboxLayout { flex-wrap: wrap; spacing: 6px; }`. Tags flow horizontally and cleanly wrap to subsequent lines without being truncated at line ends.
-   - `MetroTagChip` includes `chip-max-width` and `overflow: elide` to prevent individual oversized tags from breaking the container bounds.
+   - Tags container uses `Flickable` with bounded `width: parent.width;` (230px) and `FlexboxLayout { flex-wrap: wrap; spacing: 6px; }`. Tags flow horizontally and cleanly wrap to subsequent lines without being truncated at line ends.
+   - `MetroTagChip` includes `chip-max-width: 210px` and `overflow: elide` to prevent individual oversized tags from breaking container bounds.
    - Active tags in the cloud highlight with solid accent background and contrasting text color.
 3. **Inspector Layout & Dimensions**:
    - Pane 3 width refined to `preferred-width: 290px` (`min-width: 260px`, `max-width: 320px`, `horizontal-stretch: 0`) and `padding: 14px`, restoring aesthetic balance and leaving ample space for the literature stream.
@@ -400,6 +401,8 @@ callback apply-tag-suggestion(string);
 4. **Enhanced `MetroTagChip`**:
    - Added `has-count: bool`, `count: int`, `clickable: bool`, `removable: bool`, and `callback clicked()`.
    - Text label configured with `overflow: elide` to prevent overflow on long tag names.
+5. **Middle Stream Reset Button Hover Styling**:
+   - The middle column reset filter button's hover state binds to `hover-bg: root.theme.red` with `#ffffff` icon inversion, aligning with standard warning/destructive feedback semantics across themes rather than primary accent colors.
 
 ---
 
